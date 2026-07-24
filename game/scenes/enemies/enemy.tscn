@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://bd34f88wanqqp"]
 
 [ext_resource type="Script" uid="uid://dekua7ulbs4hq" path="res://addons/health_system/hitbox.gd" id="1_gq5jc"]
+[ext_resource type="Script" uid="uid://bq0o23ktp35nj" path="res://game/scripts/enemy.gd" id="1_vf42d"]
 [ext_resource type="Script" uid="uid://dpdcbfxsoifnh" path="res://addons/health_system/hurtbox.gd" id="2_51phj"]
 [ext_resource type="Resource" uid="uid://clw3rcw7rhjt4" path="res://game/data/stats/enemy_stats.tres" id="3_vf42d"]
 
@@ -10,7 +11,8 @@
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_m0jl5"]
 
-[node name="Enemy" type="CharacterBody2D" unique_id=972493577]
+[node name="Enemy" type="CharacterBody2D" unique_id=972493577 groups=["enemies"]]
+script = ExtResource("1_vf42d")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1799528622]
 shape = SubResource("RectangleShape2D_a215n")

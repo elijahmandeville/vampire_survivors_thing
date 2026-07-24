@@ -26,3 +26,10 @@ signal run_resumed
 ## (e.g. "player_died", "time_up") — good enough until something more
 ## structured is needed.
 signal run_ended(reason: String)
+
+## Emitted by an enemy right before it despawns. `position` is where it died,
+## so Progression can drop an XP gem there later without the enemy itself
+## needing to know Progression exists. More than one system will care about
+## this (XP, kill counter, UI), which is exactly why it belongs on the bus
+## rather than being a local signal.
+signal enemy_died(position: Vector2)

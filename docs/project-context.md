@@ -24,7 +24,7 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 3 | Movement/Input | Player control | **Done** |
 | 4 | Combat/Damage | Hit detection, damage application, death handling | **Done** |
 | 5 | Spawner | Enemy waves, timing, difficulty scaling | **Done** |
-| 6 | Weapons/Abilities | Attack firing, upgrades, combos | Not started |
+| 6 | Weapons/Abilities | Attack firing, upgrades, combos | **Done** |
 | 7 | Progression | XP, leveling, upgrade selection | Not started |
 | 8 | UI/HUD | Health bar, XP bar, timer | Not started |
 | 9 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
@@ -71,7 +71,8 @@ vampire_survivor_thing/
 │   ├── stat_system/
 │   ├── health_system/
 │   ├── event_bus/
-│   └── spawner/
+│   ├── spawner/
+│   └── weapon_system/
 │
 ├── game/
 │   ├── scenes/

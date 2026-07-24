@@ -39,11 +39,13 @@ extends Area2D
 ## -----------------------------------------------------------------
 
 signal took_damage(amount: float)
+signal died
 
 @export var stats: Stats
 
 
 func _ready() -> void:
+	stats = stats.duplicate()
 	stats.reset_to_full()
 	area_entered.connect(_on_area_entered)
 	stats.died.connect(_on_stats_died)
@@ -59,4 +61,6 @@ func _on_area_entered(area: Area2D) -> void:
 
 
 func _on_stats_died() -> void:
-	queue_free()
+	monitorable = false
+	monitoring = false
+	died.emit()

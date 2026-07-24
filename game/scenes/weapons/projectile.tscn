@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://73i3u4nr3tng"]
+
+[ext_resource type="Script" uid="uid://ctbvyt7pgef7e" path="res://addons/weapon_system/projectile.gd" id="1_3huqw"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_a215n"]
+
+[node name="Projectile" type="Area2D" unique_id=2128537435]
+script = ExtResource("1_3huqw")
+damage = 50.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1034409227]
+shape = SubResource("CapsuleShape2D_a215n")
