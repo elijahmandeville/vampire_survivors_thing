@@ -22,7 +22,7 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 1 | Game State | Run start/pause/end/reset | **Done** |
 | 2 | Stats | Central data layer (health, speed, damage mult, etc.) that other systems read/write | **Done** |
 | 3 | Movement/Input | Player control | **Done** |
-| 4 | Combat/Damage | Hit detection, damage application, death handling | In progress |
+| 4 | Combat/Damage | Hit detection, damage application, death handling | **Done** |
 | 5 | Spawner | Enemy waves, timing, difficulty scaling | Not started |
 | 6 | Weapons/Abilities | Attack firing, upgrades, combos | Not started |
 | 7 | Progression | XP, leveling, upgrade selection | Not started |
@@ -45,7 +45,8 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
 - **Game State:** IN — `start_run()`, `pause_run()`, `resume_run()`, `end_run(reason: String)`, `reset_run()`. OUT — `EventBus.run_started`, `run_paused`, `run_resumed`, `run_ended(reason)`. Readable state via `GameState.state`, `is_running()`, `is_paused()`. Autoload (`game/scripts/game_state.gd`, singleton name `GameState`). Verified: state walks READY → RUNNING → PAUSED → RUNNING → ENDED → READY as expected.
 - **Stats:** IN — exported base values (`max_health`, `move_speed`, `damage_mult`, set in Inspector or via `.tres`), plus `reset_to_full()`, `take_damage(amount)`, `heal(amount)` at runtime. OUT — local signals `health_changed(current_health, max_health)`, `died` (fires once, on the RUNNING→0 transition only). Plain `Resource` (`class_name Stats`, `addons/stat_system/stats.gd`) — NOT an autoload; every entity owns its own instance. Remember to `.duplicate()` before handing a loaded `.tres` to more than one entity. Verified: health clamps correctly on both ends, `died` fires exactly once.
 - **Movement/Input:** IN — `@export var speed`, plus directional input read internally via `Input.get_vector("move_left", "move_right", "move_up", "move_down")` (requires those four actions bound in Input Map). OUT — none yet; add a signal later only if something needs to react to movement. `class_name Movement2D`, `extends CharacterBody2D` (`addons/movement_2d/movement_2d.gd`) — the node itself is the physics body, droppable into any scene, no Stats dependency (sync speed from outside if wanted). Verified: WASD/arrow input moves the body correctly on screen.
-- **Combat/Damage:** _(TBD)_
+- **Combat/Damage:** IN — `Hitbox` (`@export var damage`, pure data, `addons/health_system/hitbox.gd`) and `Hurtbox` (`@export var stats`, `addons/health_system/hurtbox.gd`), both `Area2D`. OUT — local signal `took_damage(amount)`; relies on `Stats.died` for death. Hurtbox ignores a Hitbox sharing its own parent (prevents an entity damaging itself when it carries both pieces, e.g. Enemy). Minimal death handling by design: Hurtbox only frees itself on death — deciding what "the whole entity disappearing" means (despawn animation, game-over screen, XP reward, etc.) is still an open follow-up for when Player/Enemy get their own scripts. Verified end-to-end with real Player/Enemy scenes: overlap detection, damage application, health clamping, and single-fire death all confirmed working.
+- **Follow-up (not yet solved):** what should happen when a whole entity (not just its Hurtbox) dies — will come up naturally once Weapons/Progression need enemies to actually despawn and grant XP.
 - **Spawner:** _(TBD)_
 - **Weapons/Abilities:** _(TBD)_
 - **Progression:** _(TBD)_
@@ -123,4 +124,4 @@ vampire_survivor_thing/
 - [ ] Art style direction (for later, post-gray-box)
 
 ## Where We Left Off
-Folder skeleton is in place. System communication pattern decided (signals for local, event bus for global, Resources for state) — `EventBus` autoload built and registered. Game State, Stats, and Movement/Input are all gray-boxed, tested, and their contracts are written above. Next step: gray-box Combat/Damage (system #4 — hit detection, damage application, death handling).
+Folder skeleton is in place. System communication pattern decided (signals for local, event bus for global, Resources for state) — `EventBus` autoload built and registered. Game State, Stats, Movement/Input, and Combat/Damage are all gray-boxed, tested with real Player/Enemy scenes, and their contracts are written above. Next step: gray-box Spawner (system #5 — enemy waves, timing, difficulty scaling).

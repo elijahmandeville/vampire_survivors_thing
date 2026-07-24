@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="Stats" format=3 uid="uid://clw3rcw7rhjt4"]
+
+[ext_resource type="Script" uid="uid://4sdetmpujwqn" path="res://addons/stat_system/stats.gd" id="1_nmt48"]
+
+[resource]
+script = ExtResource("1_nmt48")
+damage_mult = 0.5
+metadata/_custom_type_script = "uid://4sdetmpujwqn"

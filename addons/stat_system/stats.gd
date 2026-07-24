@@ -46,31 +46,11 @@ var current_health: float = 0.0
 
 
 func reset_to_full() -> void:
-	# TODO: Whoever owns this Stats instance should call this once when
-	# their entity actually spawns/starts existing (e.g. in the owning
-	# node's _ready()). Deliberately not done automatically in _init(),
-	# since exported values may not be applied yet at that point if this
-	# Resource was loaded from a .tres file — calling this explicitly at
-	# spawn time avoids that ordering problem entirely.
-	#
-	# Approach:
-	#   1. current_health = max_health
-	#   2. emit health_changed(current_health, max_health)
 	current_health = max_health
 	health_changed.emit(current_health, max_health)
 
 
 func take_damage(amount: float) -> void:
-	# TODO: Reduce current_health by `amount`, without going below 0.
-	#
-	# Approach:
-	#   1. current_health = max(current_health - amount, 0.0)
-	#   2. emit health_changed(current_health, max_health)
-	#   3. if current_health == 0.0: emit died
-	#
-	# Think about it: should calling take_damage() again after current_health
-	# is already 0 do anything (re-emit died)? Probably not — consider a
-	# guard so `died` only fires once per Stats instance.
 	var was_alive := current_health > 0.0
 	current_health = max(current_health - amount, 0.0)
 	health_changed.emit(current_health, max_health)
@@ -79,9 +59,5 @@ func take_damage(amount: float) -> void:
 
 
 func heal(amount: float) -> void:
-	# TODO: Increase current_health by `amount`, without exceeding max_health.
-	#
-	# Approach: current_health = min(current_health + amount, max_health),
-	# then emit health_changed(current_health, max_health).
 	current_health = min(current_health + amount, max_health)
 	health_changed.emit(current_health, max_health)

@@ -44,35 +44,19 @@ signal took_damage(amount: float)
 
 
 func _ready() -> void:
-	# TODO: Wire up the two connections this node depends on.
-	#
-	# Approach:
-	#   1. area_entered.connect(_on_area_entered) — Area2D's own built-in
-	#      signal, fires whenever another Area2D's shape starts overlapping
-	#      this one.
-	#   2. stats.died.connect(_on_stats_died)
+	stats.reset_to_full()
 	area_entered.connect(_on_area_entered)
 	stats.died.connect(_on_stats_died)
 
 
 func _on_area_entered(area: Area2D) -> void:
-	# TODO: Only react if the thing that entered is actually a Hitbox —
-	# some other Area2D (a pickup trigger, a trap zone, whatever gets
-	# added later) would also fire this signal and shouldn't deal damage.
-	#
-	# Approach:
-	#   1. Guard: if not area is Hitbox: return
-	#   2. stats.take_damage(area.damage)
-	#   3. took_damage.emit(area.damage)
 	if not area is Hitbox:
+		return
+	if area.get_parent() == get_parent():
 		return
 	stats.take_damage(area.damage)
 	took_damage.emit(area.damage)
 
 
 func _on_stats_died() -> void:
-	# TODO: See the class comment above for why this is intentionally
-	# minimal right now.
-	#
-	# Approach: queue_free()
 	queue_free()

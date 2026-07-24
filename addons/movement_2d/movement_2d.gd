@@ -32,18 +32,6 @@ extends CharacterBody2D
 
 
 func _physics_process(_delta: float) -> void:
-	# TODO: Read directional input and move this body.
-	#
-	# Approach:
-	#   1. Get a direction vector from input:
-	#        var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	#      Input.get_vector() handles diagonal movement correctly on its
-	#      own (returns a normalized vector), so you don't need to worry
-	#      about diagonal movement being faster than straight movement.
-	#   2. Set this body's velocity: velocity = direction * speed
-	#   3. Call move_and_slide() — a CharacterBody2D method that applies
-	#      `velocity` and handles collision sliding for you. No arguments
-	#      needed in Godot 4; it reads `velocity` directly.
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	velocity = direction * speed
 	move_and_slide()

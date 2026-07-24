@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://bd34f88wanqqp"]
+
+[ext_resource type="Script" uid="uid://dekua7ulbs4hq" path="res://addons/health_system/hitbox.gd" id="1_gq5jc"]
+[ext_resource type="Script" uid="uid://dpdcbfxsoifnh" path="res://addons/health_system/hurtbox.gd" id="2_51phj"]
+[ext_resource type="Resource" uid="uid://clw3rcw7rhjt4" path="res://game/data/stats/enemy_stats.tres" id="3_vf42d"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_a215n"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ep6hb"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_m0jl5"]
+
+[node name="Enemy" type="CharacterBody2D" unique_id=972493577]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1799528622]
+shape = SubResource("RectangleShape2D_a215n")
+
+[node name="Hurtbox" type="Area2D" parent="." unique_id=398768153]
+script = ExtResource("2_51phj")
+stats = ExtResource("3_vf42d")
+metadata/_custom_type_script = "uid://dpdcbfxsoifnh"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=1961201550]
+scale = Vector2(1.01, 1.01)
+shape = SubResource("RectangleShape2D_ep6hb")
+
+[node name="Hitbox" type="Area2D" parent="." unique_id=1846580505]
+script = ExtResource("1_gq5jc")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox" unique_id=2144849379]
+shape = SubResource("RectangleShape2D_m0jl5")
