@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://dpr1r0l0kn1gb"]
+
+[ext_resource type="Script" uid="uid://hfqgioxjgnkv" path="res://addons/movement_2d/movement_2d.gd" id="1_0gakw"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_a215n"]
+
+[node name="Player" type="CharacterBody2D" unique_id=1518569309]
+script = ExtResource("1_0gakw")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1761921970]
+shape = SubResource("RectangleShape2D_a215n")
