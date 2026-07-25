@@ -17,6 +17,8 @@ script = ExtResource("1_0gakw")
 shape = SubResource("RectangleShape2D_a215n")
 
 [node name="Hurtbox" type="Area2D" parent="." unique_id=1235021749]
+collision_layer = 4
+collision_mask = 8
 script = ExtResource("2_7cuwy")
 stats = ExtResource("3_gapcj")
 metadata/_custom_type_script = "uid://dpdcbfxsoifnh"

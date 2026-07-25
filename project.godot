@@ -52,6 +52,14 @@ move_right={
 ]
 }
 
+[layer_names]
+
+2d_physics/layer_1="world"
+2d_physics/layer_2="player_hitbox"
+2d_physics/layer_3="player_hurtbox"
+2d_physics/layer_4="enemy_hitbox"
+2d_physics/layer_5="enemy_hurtbox"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

@@ -54,7 +54,7 @@ func _ready() -> void:
 func _on_area_entered(area: Area2D) -> void:
 	if not area is Hitbox:
 		return
-	if area.get_parent() == get_parent():
+	if area.get_source() == get_parent():
 		return
 	stats.take_damage(area.damage)
 	took_damage.emit(area.damage)

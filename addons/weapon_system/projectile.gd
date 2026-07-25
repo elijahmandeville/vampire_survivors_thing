@@ -25,7 +25,6 @@ extends Hitbox
 @export var speed: float = 400.0
 @export var lifetime: float = 2.0
 
-var source: Node
 var direction: Vector2 = Vector2.RIGHT
 
 
