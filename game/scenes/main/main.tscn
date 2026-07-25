@@ -8,9 +8,38 @@
 [ext_resource type="PackedScene" uid="uid://cfh7v4kgiyi2w" path="res://game/scenes/pickups/xp_gem.tscn" id="6_oh83o"]
 [ext_resource type="Script" uid="uid://d320742celn73" path="res://addons/progression/progression.gd" id="7_mgyau"]
 [ext_resource type="Script" uid="uid://cveuub5rxtsxo" path="res://game/scripts/run_timer.gd" id="8_oh83o"]
+[ext_resource type="Script" uid="uid://d3dybghig3w15" path="res://game/scripts/hud.gd" id="9_hud01"]
 
 [node name="main" type="Node" unique_id=1552334455]
 script = ExtResource("1_6r5er")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=272725195 node_paths=PackedStringArray("run_timer")]
+script = ExtResource("9_hud01")
+run_timer = NodePath("../Run Timer")
+
+[node name="HealthBar" type="ProgressBar" parent="HUD" unique_id=1822281656]
+offset_left = 1052.0
+offset_top = 602.0
+offset_right = 1130.0
+offset_bottom = 629.0
+
+[node name="XPBar" type="ProgressBar" parent="HUD" unique_id=1055404322]
+offset_left = 21.0
+offset_top = 602.0
+offset_right = 99.0
+offset_bottom = 629.0
+
+[node name="LevelLabel" type="Label" parent="HUD" unique_id=1294716129]
+offset_left = 1088.0
+offset_top = 21.0
+offset_right = 1128.0
+offset_bottom = 44.0
+
+[node name="TimerLabel" type="Label" parent="HUD" unique_id=1520547018]
+offset_left = 27.0
+offset_top = 22.0
+offset_right = 67.0
+offset_bottom = 45.0
 
 [node name="Player" parent="." unique_id=1518569309 instance=ExtResource("1_iohjk")]
 position = Vector2(516, 277)
@@ -19,11 +48,10 @@ position = Vector2(516, 277)
 script = ExtResource("2_nwrd2")
 target = NodePath("../Player")
 enemy_scene = ExtResource("2_31wdb")
+spawn_radius = 800.0
+min_spawn_distance = 600.0
 
 [node name="Timer" type="Timer" parent="Spawner" unique_id=2142457299]
-
-[node name="Enemy" parent="." unique_id=972493577 instance=ExtResource("2_31wdb")]
-position = Vector2(757, 276)
 
 [node name="XP Spawner" type="Node2D" parent="." unique_id=930794113]
 script = ExtResource("5_rafx1")
@@ -34,5 +62,6 @@ script = ExtResource("7_mgyau")
 
 [node name="Run Timer" type="Node" parent="." unique_id=2134725963]
 script = ExtResource("8_oh83o")
+run_duration = 600.0
 
 [node name="Timer" type="Timer" parent="Run Timer" unique_id=1069411225]

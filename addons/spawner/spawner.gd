@@ -40,8 +40,16 @@ extends Node2D
 
 @export var target: Node2D
 @export var enemy_scene: PackedScene
-@export var spawn_radius: float = 400.0
-@export var min_spawn_distance: float = 300.0
+## Sized against the base viewport (1152x648), whose half-diagonal is ~661
+## px — the distance from the player at screen centre to a corner. Spawning
+## further out than that guarantees enemies appear offscreen and walk in,
+## instead of popping into existence in view.
+##
+## This only stays true because Display > Stretch > Aspect is "keep", which
+## pins how much world is visible regardless of window size. If that ever
+## changes to "expand", these numbers stop meaning what they say.
+@export var spawn_radius: float = 900.0
+@export var min_spawn_distance: float = 700.0
 @export var spawn_interval: float = 2.0
 @export var min_spawn_interval: float = 0.5
 @export var interval_decrease_rate: float = 0.0  # 0 = no difficulty scaling yet

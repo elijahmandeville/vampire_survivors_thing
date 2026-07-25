@@ -13,6 +13,8 @@
 
 [node name="Enemy" type="CharacterBody2D" unique_id=972493577 groups=["enemies"]]
 script = ExtResource("1_vf42d")
+speed = 65.0
+stop_distance = 10.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1799528622]
 shape = SubResource("RectangleShape2D_a215n")

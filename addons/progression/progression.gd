@@ -42,6 +42,16 @@ func _ready() -> void:
 	xp_to_next = base_xp_to_level
 	EventBus.xp_gained.connect(_on_xp_gained)
 
+	# TODO: Publish the starting state so a HUD has something to draw
+	# before any XP is collected.
+	#
+	# Approach:
+	#   1. EventBus.xp_changed.emit(current_xp, xp_to_next, level)
+	#
+	# Same "announce initial state" idea as player.gd — a listener that
+	# only ever hears about changes never learns where things started.
+	EventBus.xp_changed.emit(current_xp, xp_to_next, level)
+
 
 func _on_xp_gained(amount: int) -> void:
 	# TODO: Bank the XP, then level up as many times as it warrants.
@@ -68,6 +78,18 @@ func _on_xp_gained(amount: int) -> void:
 		level += 1
 		_recalculate_xp_to_next()
 		EventBus.level_up.emit(level)
+
+	# TODO: Announce the resulting state, once, after all leveling settles.
+	#
+	# Approach:
+	#   1. EventBus.xp_changed.emit(current_xp, xp_to_next, level)
+	#
+	# Deliberately OUTSIDE the while loop, and after it. Emitting inside
+	# would fire once per level crossed, and a listener would briefly see
+	# intermediate states that were never really true for a full frame.
+	# One drop of XP = one state announcement, however many levels it
+	# happened to trigger.
+	EventBus.xp_changed.emit(current_xp, xp_to_next, level)
 
 
 func _recalculate_xp_to_next() -> void:

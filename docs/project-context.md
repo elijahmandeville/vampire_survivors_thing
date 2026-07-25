@@ -92,7 +92,13 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   - **Starts on `run_started`, not in `_ready()`.** Starting in `_ready()` would count the *scene's* lifetime rather than the run's — and child `_ready()` runs before the parent's, so `main.gd`'s `start_run()` hasn't even fired at that point.
   - Pausing needs no handling: the child Timer freezes with the tree, so paused time doesn't count against the run.
   - A win and a loss both travel the same path — `end_run(reason)` — with the reason string deciding which screen renders. That string was added back when dying was the only way a run could end.
-- **UI/HUD:** _(TBD)_
+- **UI/HUD (display half):** `game/scripts/hud.gd`, a `CanvasLayer` child of main with `HealthBar`/`XPBar` (ProgressBar) and `LevelLabel`/`TimerLabel` (Label) children. IN — `EventBus.player_health_changed` and `EventBus.xp_changed` (pushed), plus `@export var run_timer` polled in `_process`. OUT — **nothing.** Read-only by design: it draws state, takes no input, changes nothing.
+  - **`CanvasLayer`, not `Control`** — draws in screen space, so it's unaffected by the player-following `Camera2D`. Adding the camera required no HUD changes at all.
+  - **Pushed vs polled.** Health and XP arrive as signals: they change rarely, at moments something else already knows about. The run timer is polled every frame: it changes continuously, so a signal per frame would be noise and a signal per second would make the countdown tick in visible jumps. Rule of thumb — push for events, poll for continuously-varying values.
+  - **Two new relays were needed, and that's the interesting part.** The prediction was that a read-only system wouldn't force changes underneath. Mostly true — but the HUD can't read the player's health directly, because `Hurtbox` calls `.duplicate()` on Stats at runtime, so `player_stats.tres` is NOT the instance taking damage, and walking `player.hurtbox.stats` would violate Standard #2. So `player.gd` now relays its local `health_changed` out as `EventBus.player_health_changed`, and Progression emits `EventBus.xp_changed`. Both are *additive* — no existing system was restructured — but it's worth noting that "read-only" didn't mean "zero changes."
+  - **`xp_changed` is separate from `xp_gained` on purpose.** `xp_gained` is an event ("+3 XP happened", good for floating combat text); `xp_changed` is state ("you're at 2/8 toward level 3", which is what a bar needs). A listener can't derive the second from the first without duplicating Progression's math.
+  - **Startup ordering is load-bearing.** HUD must sit *above* Player and Progression in main's child order, since Godot runs `_ready()` in tree order and both push their initial state there. Separately, `player.gd` calls its own handler by hand once after connecting — Hurtbox already emitted `health_changed` during its own `_ready()` (children run before parents), so connecting alone catches every future change but misses the starting value. General pattern: **when something joins late and needs current state, connect for updates AND read the value once.**
+  - Debugging note for next time: symptoms were bars at 0% and labels blank — the `CanvasLayer` simply had no script attached. Worth checking before suspecting signal wiring.
 
 ## Reusability Standards
 Goal: build systems once, reuse across projects, stop rewriting things like 2D movement from scratch.
@@ -171,6 +177,15 @@ vampire_survivor_thing/
 - [ ] Working title / theme (repo is currently named `vampire_survivor_thing`, placeholder)
 - [ ] Art style direction (for later, post-gray-box)
 
+## Display & Fairness
+**Display → Stretch → Aspect is `keep`** (was `expand`). Every player sees exactly the same amount of world regardless of window size or monitor; wider aspect ratios get pillarboxed instead of revealing more map. Matches what Vampire Survivors does.
+
+This isn't cosmetic — it's a balance decision. Under `expand`, an ultrawide monitor would see enemies approaching sooner than a 16:9 one, a real competitive advantage. Deriving spawn distance from viewport size would have *preserved* that advantage while only fixing the visual pop-in; pinning the visible area fixes the actual problem.
+
+Consequence worth remembering: **`spawner.gd`'s distances are now written against a fixed visible area** — base viewport 1152×648, half-diagonal ≈661px, so `min_spawn_distance = 700` and `spawn_radius = 900` put spawns just offscreen. If Stretch Aspect ever changes, or a runtime camera zoom gets added, those numbers stop meaning what they say and spawning would need to derive from `get_viewport_rect().size / camera.zoom` instead.
+
+The HUD is a `CanvasLayer`, which draws in screen space and is unaffected by the camera — so adding a player-following `Camera2D` needed no HUD changes at all.
+
 ## Deferred Work & Known Issues
 Small things consciously left undone, so they don't get rediscovered as surprises. None are bugs in working systems — they're scope boundaries.
 
@@ -204,14 +219,13 @@ Enemies now chase (`Follow2D`), so the game has actual threat for the first time
 
 Everything consciously left undone lives in **Deferred Work & Known Issues** above, rather than in this section — that table survives between sessions, this paragraph gets rewritten each time.
 
-### Pick up here — UI/HUD (system #11)
-**All gameplay logic is done.** A run now genuinely starts, escalates, and ends both ways — death and survival. Everything below the UI layer is gray-boxed and verified.
+### Pick up here — game over + restart
+The HUD is done. A camera follows the player, spawns happen offscreen, and health/XP/level/timer all display live.
 
-UI is the first system with no gray-box equivalent: it needs real `Control` nodes, anchors, and layout, none of which have a primitive-shape stand-in. It's also the first system that only *reads* — every signal it needs is already being emitted, so nothing underneath should have to change. If something does need changing, that's a sign a seam is in the wrong place, and worth stopping to look at.
+Remaining UI work, in order:
 
-Four separate things, probably worth doing in this order rather than as one system:
+1. **Game-over screen** — consumes `EventBus.run_ended(reason)` and branches on the string: `"player_died"` → defeat, `"time_up"` → victory. Must set `process_mode = PROCESS_MODE_ALWAYS`, since `end_run()` freezes the tree before this screen ever appears. This is the first UI that isn't read-only.
+2. **Restart** — `reset_run()` plus `get_tree().reload_current_scene()`. Currently impossible: the tree freezes with nothing able to unfreeze it, so the only way out of a finished run is stopping the scene.
+3. **Upgrade selection** — the big one, and the only piece that isn't presentational at all. Consumes `EventBus.level_up`, needs an `UpgradeData` Resource type plus a pool to draw from, and must apply choices to the player's `Stats`. Deferred out of Progression deliberately. Treat as its own system, not a HUD feature — it pauses the game, presents a choice, and mutates player state.
 
-1. **HUD** — health bar (`Stats.health_changed`), XP bar + level (`EventBus.xp_gained` / `level_up`), run timer (`RunTimer.get_time_left()`, polled). Pure display, no input, lowest risk.
-2. **Game-over screen** — consumes `EventBus.run_ended(reason)` and branches on the string: `"player_died"` → defeat, `"time_up"` → victory. Needs `process_mode = PROCESS_MODE_ALWAYS`, since the tree is frozen by then.
-3. **Restart** — `reset_run()` plus a scene reload. Currently impossible; the tree freezes with nothing able to unfreeze it.
-4. **Upgrade selection** — the big one, and the only piece that isn't purely presentational. Consumes `EventBus.level_up`, needs an `UpgradeData` Resource type and a pool to draw from, and must apply choices to the player's `Stats`. Deferred out of Progression on purpose. Worth treating as its own system rather than tacking onto the HUD.
+Note `player.gd` passes `"Player Died"` to `end_run()`, while `run_timer.gd` passes `"time_up"`. The game-over screen will compare these strings, so they should be consistent identifiers — `"player_died"` — before something starts branching on them.

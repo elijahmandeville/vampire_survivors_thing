@@ -31,14 +31,38 @@ extends Movement2D
 
 
 func _ready() -> void:
-	# TODO: Listen for this player's Hurtbox announcing death.
+	hurtbox.died.connect(_on_hurtbox_died)
+
+	# TODO: Relay this player's health onto the bus so the HUD can draw it.
 	#
 	# Approach:
-	#   1. hurtbox.died.connect(_on_hurtbox_died)
+	#   1. hurtbox.stats.health_changed.connect(_on_health_changed)
+	#   2. Then immediately push the CURRENT value once, by hand:
+	#        _on_health_changed(hurtbox.stats.current_health, hurtbox.stats.max_health)
 	#
-	# Identical to enemy.gd's _ready(). If you ever add other "on spawn"
-	# player setup, it goes here too.
-	hurtbox.died.connect(_on_hurtbox_died)
+	# Step 2 is the part that's easy to miss and annoying to debug. Child
+	# nodes run _ready() before their parent, so Hurtbox has ALREADY called
+	# stats.reset_to_full() — and its health_changed emission — before this
+	# line runs. Connecting now means you catch every FUTURE change but miss
+	# the starting value, and the HUD would sit blank until you first took
+	# damage. Firing the handler manually once fixes that.
+	#
+	# General pattern worth remembering: when something joins late and needs
+	# current state, connect for updates AND read the value once.
+	hurtbox.stats.health_changed.connect(_on_health_changed)
+	_on_health_changed(hurtbox.stats.current_health, hurtbox.stats.max_health)
+
+
+func _on_health_changed(current_health: float, max_health: float) -> void:
+	# TODO: Republish a local signal as a global one.
+	#
+	# Approach:
+	#   1. EventBus.player_health_changed.emit(current_health, max_health)
+	#
+	# That's the whole function. Stats has no idea who owns it, so it can
+	# only emit locally; this script knows it's the player, so it's the
+	# right place to say "the PLAYER's health changed" to the world.
+	EventBus.player_health_changed.emit(current_health, max_health)
 
 
 func _on_hurtbox_died() -> void:

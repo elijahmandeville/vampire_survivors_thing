@@ -23,7 +23,6 @@ GameState="*uid://d0dane3ik8d57"
 [display]
 
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
 
 [global_group]
 

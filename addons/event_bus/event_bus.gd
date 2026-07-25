@@ -41,6 +41,29 @@ signal enemy_died(position: Vector2)
 signal xp_gained(amount: int)
 
 ## Emitted by Progression when enough XP accumulates to cross a threshold.
-## Nothing listens yet — the upgrade-selection screen (system #8) is what
-## will consume this. Emitting into the void on purpose.
+## The upgrade-selection screen is what will eventually consume this.
 signal level_up(level: int)
+
+## Emitted by player.gd, relaying its own Stats.health_changed outward.
+##
+## Why a relay instead of the HUD reading the player's Stats directly:
+## Stats is a per-instance Resource and Hurtbox calls .duplicate() on it at
+## runtime, so the .tres file on disk is NOT the instance taking damage.
+## The only way to reach the live one is through the entity that owns it —
+## and having the HUD walk `player.hurtbox.stats` would be exactly the
+## internals-grabbing Reusability Standard #2 rules out. So the player
+## announces its own health, and anything that cares listens.
+##
+## Player-specific on purpose: enemies emit no such signal. A HUD tracking
+## "the" health only makes sense for the one entity the camera follows.
+signal player_health_changed(current_health: float, max_health: float)
+
+## Emitted by Progression whenever XP or level changes — including on the
+## same frame as level_up.
+##
+## Separate from xp_gained because the two answer different questions:
+## xp_gained says "+3 XP just happened" (an event, good for floating combat
+## text), while this says "you are now at 2/8 toward level 3" (state, which
+## is what a bar actually needs to draw itself). A listener can't derive the
+## second from the first without duplicating Progression's own math.
+signal xp_changed(current_xp: int, xp_to_next: int, level: int)

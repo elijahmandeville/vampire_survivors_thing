@@ -44,3 +44,6 @@ collision_mask = 32
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Collector" unique_id=1422853024]
 scale = Vector2(5.275, 5.275)
 shape = SubResource("CircleShape2D_a215n")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=21629644]
+position_smoothing_enabled = true
