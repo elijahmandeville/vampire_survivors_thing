@@ -28,8 +28,9 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 7 | Progression | XP, leveling, upgrade selection | **Done** (upgrade selection deferred to #8) |
 | 8 | Enemy AI | Enemies chase the player | **Done** |
 | 9 | Run End | Player death → game over | **Done** |
-| 10 | UI/HUD | Health bar, XP bar, timer, upgrade selection | Not started |
-| 11 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
+| 10 | Win Condition | Survive the run timer | **Done** |
+| 11 | UI/HUD | Health bar, XP bar, timer, upgrade selection, game over | Not started |
+| 12 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
 
 *Rule of thumb: a system isn't modular yet if it needs final art or another unfinished system to be testable in isolation.*
 
@@ -85,6 +86,12 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   - **It IS the body** (extends CharacterBody2D) rather than being a child component, matching Movement2D. Consequence: a Godot node holds one script, so `enemy.gd` had to change from `extends CharacterBody2D` to `extends Follow2D` — chasing then came for free and the death-handling code was untouched. Cost of this choice: one movement behavior per entity, fixed by inheritance. Revisit only if an enemy needs to swap movement at runtime (a charger that winds up, a fleeer) — that's where composition would start earning its keep.
   - **Known gap:** neither `Follow2D` nor `Movement2D` guards on `GameState.is_running()`, so both keep moving through a pause or after the run ends. Harmless today; fix both together when Run End lands. Same fix incidentally stops `_find_target()` re-querying the group every frame once the player no longer exists.
 - **Run End:** `game/scripts/player.gd` (`extends Movement2D` — same move `enemy.gd` made for `Follow2D`, since a node holds one script and game glue on an entity root has to extend that entity's movement component). IN — requires a child `Hurtbox`. OUT — `GameState.end_run("player_died")` → `EventBus.run_ended(reason)`. Exact mirror of `enemy.gd`, different decision: an enemy dying is routine, the player dying ends the run. Deliberately does **not** `queue_free()` the player — deleting it mid-frame would break everything holding a reference (Spawner's `target`, every Follow2D's cached `target`), and a game-over screen will want the body still on screen. Reason strings are plain identifiers, not player-facing text; `"time_up"` will come through the same door for the win condition.
+- **Win Condition:** `game/scripts/run_timer.gd`, a plain `Node` child of main with its own child `Timer`. IN — `@export var run_duration` (seconds); starts on `EventBus.run_started`. OUT — `GameState.end_run("time_up")`, plus `get_time_left()` for the HUD to poll. Game glue, not an addon: "the run has a fixed length and surviving it wins" is a rule of *this* game, so depending on `GameState` is correct here — unlike Spawner/Weapon, which had that dependency removed.
+  - **First listener `run_started` ever had.** GameState had been emitting it since system #1 with nothing on the other end, and adding a consumer required no change to GameState at all. The signal was already the seam.
+  - `timer.one_shot = true` — the one place this differs from Spawner's and Weapon's repeating timers. Without it, it would restart and call `end_run()` again every `run_duration` seconds.
+  - **Starts on `run_started`, not in `_ready()`.** Starting in `_ready()` would count the *scene's* lifetime rather than the run's — and child `_ready()` runs before the parent's, so `main.gd`'s `start_run()` hasn't even fired at that point.
+  - Pausing needs no handling: the child Timer freezes with the tree, so paused time doesn't count against the run.
+  - A win and a loss both travel the same path — `end_run(reason)` — with the reason string deciding which screen renders. That string was added back when dying was the only way a run could end.
 - **UI/HUD:** _(TBD)_
 
 ## Reusability Standards
@@ -174,7 +181,8 @@ Small things consciously left undone, so they don't get rediscovered as surprise
 | ~~Player death does nothing~~ | — | **Done** — that's the Run End system. |
 | No way to restart after death | — | The run ends and the tree freezes, but nothing can unfreeze it. Needs a game-over screen with `process_mode = PROCESS_MODE_ALWAYS` calling `reset_run()` + a scene reload. Part of UI/HUD. |
 | No upgrade selection | — | Deliberately cut from Progression. Needs an `UpgradeData` Resource + a UI screen consuming `EventBus.level_up`. |
-| No win condition | — | `end_run(reason)` already takes a string, so `"time_up"` is accounted for; just needs a run timer. |
+| ~~No win condition~~ | — | **Done** — `run_timer.gd` calls `end_run("time_up")`. |
+| `get_time_left()` returns `run_duration` on both paths | `run_timer.gd` | Typo; second `return` should be `timer.time_left`. Silent until the HUD polls it. |
 | Gems have no magnet | `pickup.gd` | You must walk directly onto them. Vampire Survivors pulls them in past a radius. Pure feel, zero blockers. |
 | Enemies overlap each other | `follow_2d.gd` | They physically collide but still bunch up. Real fix is separation steering — worth doing only if it looks bad at higher spawn counts. |
 | `enemy_stats.tres` `damage_mult` unused | `stats.gd` | `take_damage()` never reads it. Either wire it up or remove the field so it stops implying behavior that doesn't exist. |
@@ -196,11 +204,14 @@ Enemies now chase (`Follow2D`), so the game has actual threat for the first time
 
 Everything consciously left undone lives in **Deferred Work & Known Issues** above, rather than in this section — that table survives between sessions, this paragraph gets rewritten each time.
 
-### Pick up here — test the pause switch, then the run timer
-The engine-pause refactor just landed and is **not yet play-tested**. Verify first:
+### Pick up here — UI/HUD (system #11)
+**All gameplay logic is done.** A run now genuinely starts, escalates, and ends both ways — death and survival. Everything below the UI layer is gray-boxed and verified.
 
-1. Die, and confirm *everything* freezes — enemies stop mid-chase, gems stop, WASD does nothing. Previously only Spawner and Weapon stopped.
-2. Confirm the game still starts normally (`main.gd` calls `start_run()`, which now also sets `paused = false`).
-3. Known consequence, not a bug: once you die there's no way to restart without stopping the scene. Nothing can unpause the tree yet. That's the game-over screen's job.
+UI is the first system with no gray-box equivalent: it needs real `Control` nodes, anchors, and layout, none of which have a primitive-shape stand-in. It's also the first system that only *reads* — every signal it needs is already being emitted, so nothing underneath should have to change. If something does need changing, that's a sign a seam is in the wrong place, and worth stopping to look at.
 
-Then the last gameplay gap before UI: **a run timer / win condition.** `end_run("time_up")` already fits through the same door `"player_died"` uses, so it's likely just a Timer node plus a few lines — probably the smallest system left. After that, UI/HUD has real stakes to display and a real game-over state to render.
+Four separate things, probably worth doing in this order rather than as one system:
+
+1. **HUD** — health bar (`Stats.health_changed`), XP bar + level (`EventBus.xp_gained` / `level_up`), run timer (`RunTimer.get_time_left()`, polled). Pure display, no input, lowest risk.
+2. **Game-over screen** — consumes `EventBus.run_ended(reason)` and branches on the string: `"player_died"` → defeat, `"time_up"` → victory. Needs `process_mode = PROCESS_MODE_ALWAYS`, since the tree is frozen by then.
+3. **Restart** — `reset_run()` plus a scene reload. Currently impossible; the tree freezes with nothing able to unfreeze it.
+4. **Upgrade selection** — the big one, and the only piece that isn't purely presentational. Consumes `EventBus.level_up`, needs an `UpgradeData` Resource type and a pool to draw from, and must apply choices to the player's `Stats`. Deferred out of Progression on purpose. Worth treating as its own system rather than tacking onto the HUD.

@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://c2i2n1apm7qru" path="res://game/scripts/xp_drop_spawner.gd" id="5_rafx1"]
 [ext_resource type="PackedScene" uid="uid://cfh7v4kgiyi2w" path="res://game/scenes/pickups/xp_gem.tscn" id="6_oh83o"]
 [ext_resource type="Script" uid="uid://d320742celn73" path="res://addons/progression/progression.gd" id="7_mgyau"]
+[ext_resource type="Script" uid="uid://cveuub5rxtsxo" path="res://game/scripts/run_timer.gd" id="8_oh83o"]
 
 [node name="main" type="Node" unique_id=1552334455]
 script = ExtResource("1_6r5er")
@@ -31,11 +32,7 @@ gem_scene = ExtResource("6_oh83o")
 [node name="Progression" type="Node" parent="." unique_id=1388783560]
 script = ExtResource("7_mgyau")
 
-[node name="XpGem" parent="." unique_id=638512162 instance=ExtResource("6_oh83o")]
-position = Vector2(513, 361)
+[node name="Run Timer" type="Node" parent="." unique_id=2134725963]
+script = ExtResource("8_oh83o")
 
-[node name="XpGem2" parent="." unique_id=1895179618 instance=ExtResource("6_oh83o")]
-position = Vector2(397, 327)
-
-[node name="XpGem3" parent="." unique_id=714102146 instance=ExtResource("6_oh83o")]
-position = Vector2(376, 246)
+[node name="Timer" type="Timer" parent="Run Timer" unique_id=1069411225]
