@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dpr1r0l0kn1gb"]
 
-[ext_resource type="Script" uid="uid://hfqgioxjgnkv" path="res://addons/movement_2d/movement_2d.gd" id="1_0gakw"]
+[ext_resource type="Script" uid="uid://yqi6nat7wd4w" path="res://game/scripts/player.gd" id="1_qnrw6"]
 [ext_resource type="Script" uid="uid://dpdcbfxsoifnh" path="res://addons/health_system/hurtbox.gd" id="2_7cuwy"]
 [ext_resource type="Resource" uid="uid://clh86g0otvogt" path="res://game/data/stats/player_stats.tres" id="3_gapcj"]
 [ext_resource type="Script" uid="uid://dbx8fe4yievcb" path="res://addons/weapon_system/weapon.gd" id="4_qnrw6"]
@@ -12,8 +12,8 @@
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_a215n"]
 
-[node name="Player" type="CharacterBody2D" unique_id=1518569309]
-script = ExtResource("1_0gakw")
+[node name="Player" type="CharacterBody2D" unique_id=1518569309 groups=["player"]]
+script = ExtResource("1_qnrw6")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1761921970]
 shape = SubResource("RectangleShape2D_a215n")

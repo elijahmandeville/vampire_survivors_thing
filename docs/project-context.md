@@ -26,8 +26,10 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 5 | Spawner | Enemy waves, timing, difficulty scaling | **Done** |
 | 6 | Weapons/Abilities | Attack firing, upgrades, combos | **Done** |
 | 7 | Progression | XP, leveling, upgrade selection | **Done** (upgrade selection deferred to #8) |
-| 8 | UI/HUD | Health bar, XP bar, timer | Not started |
-| 9 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
+| 8 | Enemy AI | Enemies chase the player | **Done** |
+| 9 | Run End | Player death → game over | Not started |
+| 10 | UI/HUD | Health bar, XP bar, timer, upgrade selection | Not started |
+| 11 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
 
 *Rule of thumb: a system isn't modular yet if it needs final art or another unfinished system to be testable in isolation.*
 
@@ -78,6 +80,11 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   - Two details in the leveling math worth keeping: the level-up check is a `while`, not an `if`, so one big XP drop can cross two thresholds instead of silently swallowing the second; and `current_xp -= xp_to_next` (rather than resetting to 0) carries overflow XP forward. Cost per level is recomputed from scratch as `base * pow(multiplier, level - 1)` rather than accumulated, so any level's cost is derivable at any time — much easier to debug and to save/load later.
   - **Zero changes were needed to `enemy.gd` to add XP to the game.** It still just announces that it died. That's the ADR-001 bet paying off in practice, and the first time a system consumed a bus signal rather than only emitting one.
   - Verified: gems drop at corpses, are collected on contact with the Player's `Collector` area, and levels climb correctly.
+- **Enemy AI:** `Follow2D` (`class_name Follow2D`, `extends CharacterBody2D`, `addons/follow_2d/`). IN — `@export speed`, `target_group` (default `"player"`), `stop_distance`. OUT — none. Finds its own target by group lookup rather than taking a node reference, so a Spawner-created enemy needs zero wiring; `Player`'s root is in a global group named `player`. Caches the target and re-resolves it via `is_instance_valid()` (a plain `== null` check won't catch an already-freed node). `stop_distance` keeps a swarm from grinding into one overlapping pile; contact Hitboxes still reach further, so damage is unaffected.
+  - **Deliberate near-mirror of `Movement2D`** — identical shape, identical `move_and_slide()` at the end. The only difference is where `velocity` comes from: keyboard vs. a target's position. "Player-controlled" and "AI-controlled" turn out to differ by one expression.
+  - **It IS the body** (extends CharacterBody2D) rather than being a child component, matching Movement2D. Consequence: a Godot node holds one script, so `enemy.gd` had to change from `extends CharacterBody2D` to `extends Follow2D` — chasing then came for free and the death-handling code was untouched. Cost of this choice: one movement behavior per entity, fixed by inheritance. Revisit only if an enemy needs to swap movement at runtime (a charger that winds up, a fleeer) — that's where composition would start earning its keep.
+  - **Known gap:** neither `Follow2D` nor `Movement2D` guards on `GameState.is_running()`, so both keep moving through a pause or after the run ends. Harmless today; fix both together when Run End lands. Same fix incidentally stops `_find_target()` re-querying the group every frame once the player no longer exists.
+- **Run End:** _(TBD)_
 - **UI/HUD:** _(TBD)_
 
 ## Reusability Standards
@@ -102,7 +109,8 @@ vampire_survivor_thing/
 │   ├── spawner/
 │   ├── weapon_system/
 │   ├── pickup_system/
-│   └── progression/
+│   ├── progression/
+│   └── follow_2d/
 │
 ├── game/
 │   ├── scenes/
@@ -152,8 +160,28 @@ vampire_survivor_thing/
 
 ## Open Decisions
 - [x] System communication pattern — resolved, see `docs/ADR-001-system-communication.md`
+- [ ] **How systems should respect pause/run state.** Currently Spawner and Weapon both call `GameState.is_running()` directly. That works, but it means two `addons/` scripts now depend on a `game/` autoload — a quiet violation of Reusability Standard #1, since dropping either into a fresh project would error until a `GameState` exists. `Movement2D` and `Follow2D` have the same gap but haven't taken the dependency yet, so the decision is still open. Three options:
+  1. **Keep calling `GameState.is_running()`.** Simplest, consistent with what's there, but spreads the coupling further with each system.
+  2. **Use Godot's built-in pause instead.** `GameState.pause_run()` sets `get_tree().paused = true`, and each node's `process_mode` decides whether it keeps running. Zero addon→autoload coupling — the engine handles it — and it pauses physics properly rather than each script opting out by hand. Would mean revisiting Spawner and Weapon.
+  3. **Export a flag** (e.g. `@export var require_running: bool`) so the behavior is opt-in per instance and the addon still runs standalone.
+
+  Option 2 is probably right and gets cheaper the sooner it happens. Decide when building Run End, since that's the first time it actually matters.
 - [ ] Working title / theme (repo is currently named `vampire_survivor_thing`, placeholder)
 - [ ] Art style direction (for later, post-gray-box)
+
+## Deferred Work & Known Issues
+Small things consciously left undone, so they don't get rediscovered as surprises. None are bugs in working systems — they're scope boundaries.
+
+| Item | Where | Why deferred / when to fix |
+|---|---|---|
+| Movement doesn't stop on pause/run end | `movement_2d.gd`, `follow_2d.gd` | Nothing pauses yet. Fix with Run End, alongside the Open Decision above — do both files at once. |
+| `_find_target()` re-queries the group every frame when no target exists | `follow_2d.gd` | Never happens today (the player always exists). Becomes every-frame-for-the-rest-of-the-run once the player can die. The `is_running()` guard fixes it incidentally. |
+| Player death does nothing | `player.gd` scaffolded but not attached | `Stats.died` fires, Hurtbox stops monitoring, and that's it. `GameState.end_run("player_died")` is implemented and has never been called. In progress — see "Pick up here" below. |
+| No upgrade selection | — | Deliberately cut from Progression. Needs an `UpgradeData` Resource + a UI screen consuming `EventBus.level_up`. |
+| No win condition | — | `end_run(reason)` already takes a string, so `"time_up"` is accounted for; just needs a run timer. |
+| Gems have no magnet | `pickup.gd` | You must walk directly onto them. Vampire Survivors pulls them in past a radius. Pure feel, zero blockers. |
+| Enemies overlap each other | `follow_2d.gd` | They physically collide but still bunch up. Real fix is separation steering — worth doing only if it looks bad at higher spawn counts. |
+| `enemy_stats.tres` `damage_mult` unused | `stats.gd` | `take_damage()` never reads it. Either wire it up or remove the field so it stops implying behavior that doesn't exist. |
 
 ## Where We Left Off
 **Systems 1–7 are done, tested, and contracted above — the full core loop runs.** Player moves, enemies spawn in a ring around them, weapons auto-fire at the nearest enemy, enemies take damage and die, they drop XP gems, the player collects them and levels up. All in gray-box primitives, as intended.
@@ -166,10 +194,18 @@ Game-specific glue lives in `game/scripts/` (deliberately not in `addons/` — e
 
 `EventBus.level_up(level)` is emitted with **zero listeners** — intentional, and the hook UI/HUD plugs into next. (The same was true of `enemy_died` before Progression, and adding XP required no change to `enemy.gd` at all.)
 
-Next step: UI/HUD (system #8 — health bar, XP bar, timer, and the level-up upgrade selection screen that consumes `level_up`). This is the first system with no gray-box equivalent — it needs actual Control nodes — so it's worth deciding upfront how much is HUD vs. the upgrade picker.
+Enemies now chase (`Follow2D`), so the game has actual threat for the first time — contact damage matters and the ring-spawn finally means something.
 
-**Known open items:**
-- Upgrade selection was deliberately deferred out of Progression into #8. There's no `UpgradeData` resource yet.
-- Nothing handles the *player* dying — `Stats.died` fires and the Hurtbox stops monitoring, but no game-over. `GameState.end_run("player_died")` exists and is unused.
-- Gems have no magnet/attract behavior; you must walk directly onto them.
-- Enemies don't chase the player yet — they spawn and sit still.
+**Decision made:** UI/HUD was deliberately pushed back behind the remaining gameplay logic. A health bar showing 100 forever teaches nothing; better to have real stakes before building anything to display them.
+
+Everything consciously left undone lives in **Deferred Work & Known Issues** above, rather than in this section — that table survives between sessions, this paragraph gets rewritten each time.
+
+### Pick up here — Run End (system #9)
+`game/scripts/player.gd` is scaffolded with TODOs and committed, but **not yet attached to anything**. It's inert until step 1 below, so the game still runs exactly as it did.
+
+1. **Attach the script.** Open `player.tscn`, select the `Player` root, and swap its script from `addons/movement_2d/movement_2d.gd` to `game/scripts/player.gd`. Nothing else about the scene changes — `player.gd` extends `Movement2D`, so WASD control carries over. (Left undone deliberately: it's a 10-second editor action, and shipping an untested scene edit into a commit before stepping away wasn't worth the risk.)
+2. **Fill in the two TODOs.** Both are one line each and mirror `enemy.gd` exactly.
+3. **Test, and watch what happens on death.** This is the actual point of the system — it's a live test of whether the `is_running()` guard pattern holds. Expect, with no extra code: Spawner stops spawning, Weapon stops firing, but enemies keep chasing and WASD still works, because the movement addons never took that guard.
+4. **Then settle the pause Open Decision** (see above) with that behavior in front of you. Option 2 — Godot's `get_tree().paused` + per-node `process_mode` — is the likely answer, and it gets cheaper the sooner it happens, since it means revisiting Spawner and Weapon.
+
+After Run End, the remaining gameplay gap is a run timer / win condition (`end_run("time_up")` already fits through the same door), and then UI/HUD finally has real stakes to display.

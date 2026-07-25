@@ -1,4 +1,4 @@
-extends CharacterBody2D
+extends Follow2D
 ## Enemy
 ## -----------------------------------------------------------------
 ## Game-specific glue — NOT a reusable addon.
@@ -28,18 +28,5 @@ func _ready() -> void:
 
 
 func _on_hurtbox_died() -> void:
-	# TODO: Announce the death globally, then remove this enemy entirely.
-	#
-	# Approach:
-	#   1. EventBus.enemy_died.emit(global_position)
-	#      (emit BEFORE freeing — read the position while the node still
-	#      exists. Nothing listens to this signal yet, and that's fine;
-	#      it's here so Progression can drop an XP gem at this spot later
-	#      without any change to this file.)
-	#   2. queue_free()
-	#      Frees the whole enemy — body, collision shape, hitbox, hurtbox,
-	#      all of it. Godot also drops a freed node from any groups it was
-	#      in automatically, so Weapon's get_nodes_in_group("enemies")
-	#      will stop returning it and stop aiming at a corpse.
 	EventBus.enemy_died.emit(global_position)
 	queue_free()
