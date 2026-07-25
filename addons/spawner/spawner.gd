@@ -31,9 +31,11 @@ extends Node2D
 ## Hurtbox requiring a CollisionShape2D child — this script drives the
 ## Timer's behavior but doesn't create the node itself.
 ##
-## Respects Game State: only actually spawns while GameState.is_running(),
-## so pausing the run correctly pauses spawning without needing to stop/
-## restart the Timer itself.
+## Pausing needs no code here. This used to guard on GameState.is_running(),
+## which worked but made a reusable addon depend on an autoload that only
+## exists in one game. Now GameState drives get_tree().paused instead, and
+## the engine stops this node's Timer for us. Nothing to remember, and this
+## script drops into a fresh project with no GameState at all.
 ## -----------------------------------------------------------------
 
 @export var target: Node2D
@@ -87,7 +89,7 @@ func _on_timer_timeout() -> void:
 	#      Leaving interval_decrease_rate at its default of 0 means no
 	#      scaling happens yet — that's fine, tune it once the base loop
 	#      feels right.
-	if target == null or not GameState.is_running():
+	if target == null:
 		return
 	var angle := randf() * TAU
 	var distance := randf_range(min_spawn_distance, spawn_radius)

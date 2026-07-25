@@ -27,7 +27,7 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 6 | Weapons/Abilities | Attack firing, upgrades, combos | **Done** |
 | 7 | Progression | XP, leveling, upgrade selection | **Done** (upgrade selection deferred to #8) |
 | 8 | Enemy AI | Enemies chase the player | **Done** |
-| 9 | Run End | Player death → game over | Not started |
+| 9 | Run End | Player death → game over | **Done** |
 | 10 | UI/HUD | Health bar, XP bar, timer, upgrade selection | Not started |
 | 11 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
 
@@ -44,7 +44,7 @@ Rule of thumb: if only this entity's own children need to know, use a local sign
 ## System Contracts
 Once a system is gray-boxed and working, write a short contract for it here: what it takes in, what it sends out. This is what makes it swappable/extendable later without rot.
 
-- **Game State:** IN — `start_run()`, `pause_run()`, `resume_run()`, `end_run(reason: String)`, `reset_run()`. OUT — `EventBus.run_started`, `run_paused`, `run_resumed`, `run_ended(reason)`. Readable state via `GameState.state`, `is_running()`, `is_paused()`. Autoload (`game/scripts/game_state.gd`, singleton name `GameState`). Verified: state walks READY → RUNNING → PAUSED → RUNNING → ENDED → READY as expected.
+- **Game State:** IN — `start_run()`, `pause_run()`, `resume_run()`, `end_run(reason: String)`, `reset_run()`. OUT — `EventBus.run_started`, `run_paused`, `run_resumed`, `run_ended(reason)`. Readable state via `GameState.state`, `is_running()`, `is_paused()`. Autoload (`game/scripts/game_state.gd`, singleton name `GameState`). Verified: state walks READY → RUNNING → PAUSED → RUNNING → ENDED → READY as expected. **Also drives `get_tree().paused`** on every transition — this is the project-wide pause mechanism, so no other system implements pausing itself (see the resolved Open Decision below). Sets its own `process_mode = PROCESS_MODE_ALWAYS` in `_ready()`, or it would freeze itself and nothing could call `resume_run()`.
 - **Stats:** IN — exported base values (`max_health`, `move_speed`, `damage_mult`, set in Inspector or via `.tres`), plus `reset_to_full()`, `take_damage(amount)`, `heal(amount)` at runtime. OUT — local signals `health_changed(current_health, max_health)`, `died` (fires once, on the RUNNING→0 transition only). Plain `Resource` (`class_name Stats`, `addons/stat_system/stats.gd`) — NOT an autoload; every entity owns its own instance. Remember to `.duplicate()` before handing a loaded `.tres` to more than one entity. Verified: health clamps correctly on both ends, `died` fires exactly once.
 - **Movement/Input:** IN — `@export var speed`, plus directional input read internally via `Input.get_vector("move_left", "move_right", "move_up", "move_down")` (requires those four actions bound in Input Map). OUT — none yet; add a signal later only if something needs to react to movement. `class_name Movement2D`, `extends CharacterBody2D` (`addons/movement_2d/movement_2d.gd`) — the node itself is the physics body, droppable into any scene, no Stats dependency (sync speed from outside if wanted). Verified: WASD/arrow input moves the body correctly on screen.
 - **Combat/Damage:** IN — `Hitbox` (`@export var damage`, pure data, `addons/health_system/hitbox.gd`) and `Hurtbox` (`@export var stats`, `addons/health_system/hurtbox.gd`), both `Area2D`. OUT — local signal `took_damage(amount)`; relies on `Stats.died` for death. Hurtbox ignores a Hitbox sharing its own parent (prevents an entity damaging itself when it carries both pieces, e.g. Enemy). Minimal death handling by design: Hurtbox only frees itself on death — deciding what "the whole entity disappearing" means (despawn animation, game-over screen, XP reward, etc.) is still an open follow-up for when Player/Enemy get their own scripts. Verified end-to-end with real Player/Enemy scenes: overlap detection, damage application, health clamping, and single-fire death all confirmed working.
@@ -84,7 +84,7 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   - **Deliberate near-mirror of `Movement2D`** — identical shape, identical `move_and_slide()` at the end. The only difference is where `velocity` comes from: keyboard vs. a target's position. "Player-controlled" and "AI-controlled" turn out to differ by one expression.
   - **It IS the body** (extends CharacterBody2D) rather than being a child component, matching Movement2D. Consequence: a Godot node holds one script, so `enemy.gd` had to change from `extends CharacterBody2D` to `extends Follow2D` — chasing then came for free and the death-handling code was untouched. Cost of this choice: one movement behavior per entity, fixed by inheritance. Revisit only if an enemy needs to swap movement at runtime (a charger that winds up, a fleeer) — that's where composition would start earning its keep.
   - **Known gap:** neither `Follow2D` nor `Movement2D` guards on `GameState.is_running()`, so both keep moving through a pause or after the run ends. Harmless today; fix both together when Run End lands. Same fix incidentally stops `_find_target()` re-querying the group every frame once the player no longer exists.
-- **Run End:** _(TBD)_
+- **Run End:** `game/scripts/player.gd` (`extends Movement2D` — same move `enemy.gd` made for `Follow2D`, since a node holds one script and game glue on an entity root has to extend that entity's movement component). IN — requires a child `Hurtbox`. OUT — `GameState.end_run("player_died")` → `EventBus.run_ended(reason)`. Exact mirror of `enemy.gd`, different decision: an enemy dying is routine, the player dying ends the run. Deliberately does **not** `queue_free()` the player — deleting it mid-frame would break everything holding a reference (Spawner's `target`, every Follow2D's cached `target`), and a game-over screen will want the body still on screen. Reason strings are plain identifiers, not player-facing text; `"time_up"` will come through the same door for the win condition.
 - **UI/HUD:** _(TBD)_
 
 ## Reusability Standards
@@ -160,12 +160,7 @@ vampire_survivor_thing/
 
 ## Open Decisions
 - [x] System communication pattern — resolved, see `docs/ADR-001-system-communication.md`
-- [ ] **How systems should respect pause/run state.** Currently Spawner and Weapon both call `GameState.is_running()` directly. That works, but it means two `addons/` scripts now depend on a `game/` autoload — a quiet violation of Reusability Standard #1, since dropping either into a fresh project would error until a `GameState` exists. `Movement2D` and `Follow2D` have the same gap but haven't taken the dependency yet, so the decision is still open. Three options:
-  1. **Keep calling `GameState.is_running()`.** Simplest, consistent with what's there, but spreads the coupling further with each system.
-  2. **Use Godot's built-in pause instead.** `GameState.pause_run()` sets `get_tree().paused = true`, and each node's `process_mode` decides whether it keeps running. Zero addon→autoload coupling — the engine handles it — and it pauses physics properly rather than each script opting out by hand. Would mean revisiting Spawner and Weapon.
-  3. **Export a flag** (e.g. `@export var require_running: bool`) so the behavior is opt-in per instance and the addon still runs standalone.
-
-  Option 2 is probably right and gets cheaper the sooner it happens. Decide when building Run End, since that's the first time it actually matters.
+- [x] **How systems should respect pause/run state — RESOLVED: use Godot's built-in pause.** `GameState` now drives `get_tree().paused` on every state change; the engine stops `_process`, `_physics_process`, timers, and input on every node whose `process_mode` inherits the default. Spawner and Weapon had their `is_running()` guards **deleted** — they no longer reference `GameState` at all and are genuinely droppable into a project that has no such autoload (Reusability Standard #1 restored). `Movement2D` and `Follow2D` needed no changes; they simply stop being called. Rejected alternatives: spreading `is_running()` into the movement addons (would have deepened the coupling in two more files), and an `@export var require_running` flag (opt-in per instance, but still leaves every system re-implementing pause). Tradeoff accepted: pause is all-or-nothing per node, so anything that must survive a pause opts out with `process_mode = PROCESS_MODE_ALWAYS` — `GameState` itself does this, or it would freeze itself and nothing could ever call `resume_run()`. A pause menu and game-over screen will need the same.
 - [ ] Working title / theme (repo is currently named `vampire_survivor_thing`, placeholder)
 - [ ] Art style direction (for later, post-gray-box)
 
@@ -174,9 +169,10 @@ Small things consciously left undone, so they don't get rediscovered as surprise
 
 | Item | Where | Why deferred / when to fix |
 |---|---|---|
-| Movement doesn't stop on pause/run end | `movement_2d.gd`, `follow_2d.gd` | Nothing pauses yet. Fix with Run End, alongside the Open Decision above — do both files at once. |
-| `_find_target()` re-queries the group every frame when no target exists | `follow_2d.gd` | Never happens today (the player always exists). Becomes every-frame-for-the-rest-of-the-run once the player can die. The `is_running()` guard fixes it incidentally. |
-| Player death does nothing | `player.gd` scaffolded but not attached | `Stats.died` fires, Hurtbox stops monitoring, and that's it. `GameState.end_run("player_died")` is implemented and has never been called. In progress — see "Pick up here" below. |
+| ~~Movement doesn't stop on pause/run end~~ | — | **Fixed** by the engine-pause switch. |
+| ~~`_find_target()` re-queries the group every frame when no target exists~~ | — | **Fixed** incidentally — `_physics_process` no longer runs once the run ends. |
+| ~~Player death does nothing~~ | — | **Done** — that's the Run End system. |
+| No way to restart after death | — | The run ends and the tree freezes, but nothing can unfreeze it. Needs a game-over screen with `process_mode = PROCESS_MODE_ALWAYS` calling `reset_run()` + a scene reload. Part of UI/HUD. |
 | No upgrade selection | — | Deliberately cut from Progression. Needs an `UpgradeData` Resource + a UI screen consuming `EventBus.level_up`. |
 | No win condition | — | `end_run(reason)` already takes a string, so `"time_up"` is accounted for; just needs a run timer. |
 | Gems have no magnet | `pickup.gd` | You must walk directly onto them. Vampire Survivors pulls them in past a radius. Pure feel, zero blockers. |
@@ -200,12 +196,11 @@ Enemies now chase (`Follow2D`), so the game has actual threat for the first time
 
 Everything consciously left undone lives in **Deferred Work & Known Issues** above, rather than in this section — that table survives between sessions, this paragraph gets rewritten each time.
 
-### Pick up here — Run End (system #9)
-`game/scripts/player.gd` is scaffolded with TODOs and committed, but **not yet attached to anything**. It's inert until step 1 below, so the game still runs exactly as it did.
+### Pick up here — test the pause switch, then the run timer
+The engine-pause refactor just landed and is **not yet play-tested**. Verify first:
 
-1. **Attach the script.** Open `player.tscn`, select the `Player` root, and swap its script from `addons/movement_2d/movement_2d.gd` to `game/scripts/player.gd`. Nothing else about the scene changes — `player.gd` extends `Movement2D`, so WASD control carries over. (Left undone deliberately: it's a 10-second editor action, and shipping an untested scene edit into a commit before stepping away wasn't worth the risk.)
-2. **Fill in the two TODOs.** Both are one line each and mirror `enemy.gd` exactly.
-3. **Test, and watch what happens on death.** This is the actual point of the system — it's a live test of whether the `is_running()` guard pattern holds. Expect, with no extra code: Spawner stops spawning, Weapon stops firing, but enemies keep chasing and WASD still works, because the movement addons never took that guard.
-4. **Then settle the pause Open Decision** (see above) with that behavior in front of you. Option 2 — Godot's `get_tree().paused` + per-node `process_mode` — is the likely answer, and it gets cheaper the sooner it happens, since it means revisiting Spawner and Weapon.
+1. Die, and confirm *everything* freezes — enemies stop mid-chase, gems stop, WASD does nothing. Previously only Spawner and Weapon stopped.
+2. Confirm the game still starts normally (`main.gd` calls `start_run()`, which now also sets `paused = false`).
+3. Known consequence, not a bug: once you die there's no way to restart without stopping the scene. Nothing can unpause the tree yet. That's the game-over screen's job.
 
-After Run End, the remaining gameplay gap is a run timer / win condition (`end_run("time_up")` already fits through the same door), and then UI/HUD finally has real stakes to display.
+Then the last gameplay gap before UI: **a run timer / win condition.** `end_run("time_up")` already fits through the same door `"player_died"` uses, so it's likely just a Timer node plus a few lines — probably the smallest system left. After that, UI/HUD has real stakes to display and a real game-over state to render.

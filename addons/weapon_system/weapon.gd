@@ -29,8 +29,9 @@ extends Node2D
 ## node, so this still doesn't know anything about "main" or "Player"
 ## specifically.
 ##
-## Respects Game State: only fires while GameState.is_running(), same
-## pattern as Spawner.
+## Pausing needs no code here — see the same note in spawner.gd. GameState
+## drives get_tree().paused, so the engine stops this node's Timer, and
+## this script has no dependency on any autoload.
 ## -----------------------------------------------------------------
 
 ## Targeting: RANDOM fires in a random direction (good for an AoE-on-the-
@@ -55,7 +56,7 @@ func _ready() -> void:
 
 
 func _on_timer_timeout() -> void:
-	if projectile_scene == null or not GameState.is_running():
+	if projectile_scene == null:
 		return
 	var projectile := projectile_scene.instantiate()
 
