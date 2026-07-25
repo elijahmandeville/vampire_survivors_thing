@@ -25,7 +25,7 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 4 | Combat/Damage | Hit detection, damage application, death handling | **Done** |
 | 5 | Spawner | Enemy waves, timing, difficulty scaling | **Done** |
 | 6 | Weapons/Abilities | Attack firing, upgrades, combos | **Done** |
-| 7 | Progression | XP, leveling, upgrade selection | Not started |
+| 7 | Progression | XP, leveling, upgrade selection | **Done** (upgrade selection deferred to #8) |
 | 8 | UI/HUD | Health bar, XP bar, timer | Not started |
 | 9 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
 
@@ -54,6 +54,10 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   | Player/Hurtbox | player_hurtbox | enemy_hitbox |
   | Enemy/Hurtbox | enemy_hurtbox | player_hitbox |
   | Enemy/Hitbox | enemy_hitbox | player_hurtbox |
+  | XpGem/Pickup | pickup | player_collector |
+  | Player/Collector | player_collector | pickup |
+
+  Layers `6 pickup` and `7 player_collector` were added for Progression. The Player's `Collector` Area2D is intentionally much larger than its body — that circle *is* the pickup radius, tunable by resizing one shape. Bitmask reminder for reading raw `.tscn` values: layer N = 2^(N-1), so `pickup` = 32 and `player_collector` = 64.
 
   Physical `CharacterBody2D` bodies stay on `world` — body collision and Area2D detection are separate systems and shouldn't share layers. This is what stops enemies chipping each other: an Enemy Hurtbox watches only `player_hitbox`, so another enemy's contact box is invisible to it. Note Area2D detection is one-directional — only the *detector's* mask matters — so Enemy/Hitbox's mask is technically unused (Hurtbox does all detecting); it's set symmetrically anyway so the table reads consistently.
 - **Entity death (follow-up from Combat/Damage — now RESOLVED):** `Hurtbox` no longer frees itself on death. It sets `monitoring = false` / `monitorable = false` (immediately stops detecting and being detected, so projectiles don't pass through or collide with a corpse) and emits a local `died` signal outward. Deciding what death *means* belongs to game-specific code, not a reusable addon (Reusability Standard #1 — an addon can't assume "my parent is the whole entity"). `game/scripts/enemy.gd` (attached to Enemy's root, deliberately in `game/` not `addons/`) listens for `hurtbox.died`, emits `EventBus.enemy_died(global_position)`, then `queue_free()`s the whole entity. Freeing also auto-removes the node from its groups, so Weapon's `get_nodes_in_group()` stops targeting it. Nothing listens to `enemy_died` yet — it exists so Progression can drop an XP gem at that position later with zero changes to `enemy.gd`.
@@ -65,7 +69,15 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   - **Targeting is an enum, not a subclass.** `TargetMode { RANDOM, NEAREST_ENEMY }` — different weapon *types* are different Weapon nodes with different exported values, not new scripts (Reusability Standard #4). NEAREST_ENEMY loops `get_nodes_in_group(enemy_group)` tracking a running `nearest_distance` (seeded to `INF`) alongside a separate `nearest_enemy`, then converts to a heading with `direction_to()` exactly once *after* the loop. Keeping the "comparison value" and the "answer" in two separate variables is the part that's easy to get wrong. Falls back to a random direction when the group is empty. Requires enemies to be in the group — set as a **global group** named `enemies` so it autocompletes project-wide.
   - **Two parenting gotchas, both real bugs we hit:** (1) projectiles are added to `get_tree().current_scene`, NOT `get_parent()` — parenting under a moving Player makes them inherit its transform and drag along instead of flying. (2) Because of that, a `get_parent()`-based self-damage guard silently never matches — hence the explicit `source` field, set by Weapon to `get_parent()`, compared as `area.get_parent() == source`.
   - Verified: projectiles auto-fire on an interval, track the nearest enemy, deal damage, and enemies die and despawn correctly.
-- **Progression:** _(TBD)_
+- **Progression:** XP is a *collectible*, Vampire-Survivors style — enemies drop gems the player walks over, rather than awarding XP instantly on death. That's a deliberate design call: the walk-toward-the-gem pull is what makes the genre's risk/reward tick. Four pieces, following the same detector/decider split as Hitbox/Hurtbox:
+  - `Pickup` (`class_name Pickup`, `extends Area2D`, `addons/pickup_system/`) — IN: nothing exported; *which entity counts as a collector is decided entirely by Collision Layer/Mask*, not code. OUT: local signal `collected(collector)`. Knows nothing about XP — a coin, health potion, or ammo box is this same script under a different parent. Deliberately does NOT free itself, so the owner can play a sound/animation first.
+  - `game/scripts/xp_gem.gd` — game glue on the gem's root. `@export var xp_value` (a bigger gem is a different Inspector value, not a different script). On `pickup.collected` → `EventBus.xp_gained.emit(xp_value)` → `queue_free()`.
+  - `game/scripts/xp_drop_spawner.gd` — a child of main holding `@export var gem_scene`. Listens for `EventBus.enemy_died(position)` and drops a gem there. Its own node rather than more code in `main.gd`, so loot rules (drop chances, rare gems, health drops) can grow without main.gd becoming a junk drawer.
+  - `Progression` (`class_name Progression`, `extends Node`, `addons/progression/`) — IN: `EventBus.xp_gained`, plus `@export base_xp_to_level` / `xp_curve_multiplier`. OUT: `EventBus.level_up(level)`. Readable state: `current_xp`, `level`, `xp_to_next`.
+  - **Not an autoload**, same call as Stats: XP is per-run state, so a node inside the run resets by reloading the scene, where an autoload would carry a stale level into the next run unless something remembered to clear it.
+  - Two details in the leveling math worth keeping: the level-up check is a `while`, not an `if`, so one big XP drop can cross two thresholds instead of silently swallowing the second; and `current_xp -= xp_to_next` (rather than resetting to 0) carries overflow XP forward. Cost per level is recomputed from scratch as `base * pow(multiplier, level - 1)` rather than accumulated, so any level's cost is derivable at any time — much easier to debug and to save/load later.
+  - **Zero changes were needed to `enemy.gd` to add XP to the game.** It still just announces that it died. That's the ADR-001 bet paying off in practice, and the first time a system consumed a bus signal rather than only emitting one.
+  - Verified: gems drop at corpses, are collected on contact with the Player's `Collector` area, and levels climb correctly.
 - **UI/HUD:** _(TBD)_
 
 ## Reusability Standards
@@ -88,13 +100,16 @@ vampire_survivor_thing/
 │   ├── health_system/
 │   ├── event_bus/
 │   ├── spawner/
-│   └── weapon_system/
+│   ├── weapon_system/
+│   ├── pickup_system/
+│   └── progression/
 │
 ├── game/
 │   ├── scenes/
 │   │   ├── player/
 │   │   ├── enemies/
 │   │   ├── weapons/
+│   │   ├── pickups/
 │   │   ├── ui/
 │   │   └── main/
 │   ├── data/
@@ -141,12 +156,20 @@ vampire_survivor_thing/
 - [ ] Art style direction (for later, post-gray-box)
 
 ## Where We Left Off
-**Systems 1–6 are all done, tested, and contracted above — the core combat loop is playable.** Player moves, enemies spawn in a ring around them, weapons auto-fire at the nearest enemy, damage applies, enemies die and despawn. All in gray-box primitives, as intended.
+**Systems 1–7 are done, tested, and contracted above — the full core loop runs.** Player moves, enemies spawn in a ring around them, weapons auto-fire at the nearest enemy, enemies take damage and die, they drop XP gems, the player collects them and levels up. All in gray-box primitives, as intended.
 
-Two pieces of game-specific glue live in `game/scripts/` (deliberately not in `addons/`, since they encode decisions specific to this game):
-- `main.gd` — attached to `main.tscn`'s root, calls `GameState.start_run()`. Any other "on game start" wiring goes here.
-- `enemy.gd` — attached to Enemy's root, turns a Hurtbox death into a full despawn plus `EventBus.enemy_died`.
+Game-specific glue lives in `game/scripts/` (deliberately not in `addons/` — each encodes a decision specific to *this* game):
+- `main.gd` — on `main.tscn`'s root, calls `GameState.start_run()`. Other "on game start" wiring goes here.
+- `enemy.gd` — turns a Hurtbox death into a full despawn plus `EventBus.enemy_died`.
+- `xp_gem.gd` — turns a Pickup collection into `EventBus.xp_gained`.
+- `xp_drop_spawner.gd` — turns `enemy_died` into a gem on the ground.
 
-`EventBus.enemy_died(position)` is emitted but has **zero listeners** — that's intentional and is the hook Progression plugs into next.
+`EventBus.level_up(level)` is emitted with **zero listeners** — intentional, and the hook UI/HUD plugs into next. (The same was true of `enemy_died` before Progression, and adding XP required no change to `enemy.gd` at all.)
 
-Next step: gray-box Progression (system #7 — XP, leveling, upgrade selection). It's the first system that makes the loop a *game* rather than a sandbox, and the first one that will consume an EventBus signal rather than just emitting one.
+Next step: UI/HUD (system #8 — health bar, XP bar, timer, and the level-up upgrade selection screen that consumes `level_up`). This is the first system with no gray-box equivalent — it needs actual Control nodes — so it's worth deciding upfront how much is HUD vs. the upgrade picker.
+
+**Known open items:**
+- Upgrade selection was deliberately deferred out of Progression into #8. There's no `UpgradeData` resource yet.
+- Nothing handles the *player* dying — `Stats.died` fires and the Hurtbox stops monitoring, but no game-over. `GameState.end_run("player_died")` exists and is unused.
+- Gems have no magnet/attract behavior; you must walk directly onto them.
+- Enemies don't chase the player yet — they spawn and sit still.

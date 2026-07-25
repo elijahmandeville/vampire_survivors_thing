@@ -59,6 +59,8 @@ move_right={
 2d_physics/layer_3="player_hurtbox"
 2d_physics/layer_4="enemy_hitbox"
 2d_physics/layer_5="enemy_hurtbox"
+2d_physics/layer_6="pickup"
+2d_physics/layer_7="player_collector"
 
 [physics]
 

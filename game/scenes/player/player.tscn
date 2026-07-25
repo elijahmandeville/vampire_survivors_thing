@@ -10,6 +10,8 @@
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_m0jl5"]
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_a215n"]
+
 [node name="Player" type="CharacterBody2D" unique_id=1518569309]
 script = ExtResource("1_0gakw")
 
@@ -34,3 +36,11 @@ target_mode = 1
 metadata/_custom_type_script = "uid://dbx8fe4yievcb"
 
 [node name="Timer" type="Timer" parent="Weapon" unique_id=209910402]
+
+[node name="Collector" type="Area2D" parent="." unique_id=1679527479]
+collision_layer = 64
+collision_mask = 32
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Collector" unique_id=1422853024]
+scale = Vector2(5.275, 5.275)
+shape = SubResource("CircleShape2D_a215n")

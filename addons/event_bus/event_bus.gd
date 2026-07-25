@@ -33,3 +33,14 @@ signal run_ended(reason: String)
 ## this (XP, kill counter, UI), which is exactly why it belongs on the bus
 ## rather than being a local signal.
 signal enemy_died(position: Vector2)
+
+## Emitted by an XP pickup when the player collects it. Progression listens
+## for this; UI will too, later. Note the pickup emits this rather than
+## calling Progression directly — that's the whole point of the bus: the
+## gem doesn't need to know Progression exists, or that only one of it does.
+signal xp_gained(amount: int)
+
+## Emitted by Progression when enough XP accumulates to cross a threshold.
+## Nothing listens yet — the upgrade-selection screen (system #8) is what
+## will consume this. Emitting into the void on purpose.
+signal level_up(level: int)

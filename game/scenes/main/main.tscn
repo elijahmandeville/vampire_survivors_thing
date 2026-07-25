@@ -4,6 +4,9 @@
 [ext_resource type="PackedScene" uid="uid://dpr1r0l0kn1gb" path="res://game/scenes/player/player.tscn" id="1_iohjk"]
 [ext_resource type="PackedScene" uid="uid://bd34f88wanqqp" path="res://game/scenes/enemies/enemy.tscn" id="2_31wdb"]
 [ext_resource type="Script" uid="uid://yk782ed7tr0c" path="res://addons/spawner/spawner.gd" id="2_nwrd2"]
+[ext_resource type="Script" uid="uid://c2i2n1apm7qru" path="res://game/scripts/xp_drop_spawner.gd" id="5_rafx1"]
+[ext_resource type="PackedScene" uid="uid://cfh7v4kgiyi2w" path="res://game/scenes/pickups/xp_gem.tscn" id="6_oh83o"]
+[ext_resource type="Script" uid="uid://d320742celn73" path="res://addons/progression/progression.gd" id="7_mgyau"]
 
 [node name="main" type="Node" unique_id=1552334455]
 script = ExtResource("1_6r5er")
@@ -20,3 +23,19 @@ enemy_scene = ExtResource("2_31wdb")
 
 [node name="Enemy" parent="." unique_id=972493577 instance=ExtResource("2_31wdb")]
 position = Vector2(757, 276)
+
+[node name="XP Spawner" type="Node2D" parent="." unique_id=930794113]
+script = ExtResource("5_rafx1")
+gem_scene = ExtResource("6_oh83o")
+
+[node name="Progression" type="Node" parent="." unique_id=1388783560]
+script = ExtResource("7_mgyau")
+
+[node name="XpGem" parent="." unique_id=638512162 instance=ExtResource("6_oh83o")]
+position = Vector2(513, 361)
+
+[node name="XpGem2" parent="." unique_id=1895179618 instance=ExtResource("6_oh83o")]
+position = Vector2(397, 327)
+
+[node name="XpGem3" parent="." unique_id=714102146 instance=ExtResource("6_oh83o")]
+position = Vector2(376, 246)
