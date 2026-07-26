@@ -115,6 +115,6 @@ func _format_time(seconds: float) -> String:
 	# 1:5 into 1:05. When a format string has more than one placeholder,
 	# the values go in an array on the right.
 	var total := int(seconds)
-	var minutes := total / 60
+	var minutes := floori(total / 60.0)
 	var secs := total % 60
 	return "%d:%02d" % [minutes, secs]

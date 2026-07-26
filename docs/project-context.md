@@ -29,8 +29,10 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 8 | Enemy AI | Enemies chase the player | **Done** |
 | 9 | Run End | Player death → game over | **Done** |
 | 10 | Win Condition | Survive the run timer | **Done** |
-| 11 | UI/HUD | Health bar, XP bar, timer, upgrade selection, game over | Not started |
-| 12 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
+| 11 | UI/HUD | Health bar, XP bar, timer, level | **Done** |
+| 12 | Run End UI | Game over screen + restart | **Done** |
+| 13 | Upgrade Selection | UpgradeData resources, level-up choice screen | Not started |
+| 14 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
 
 *Rule of thumb: a system isn't modular yet if it needs final art or another unfinished system to be testable in isolation.*
 
@@ -99,6 +101,12 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   - **`xp_changed` is separate from `xp_gained` on purpose.** `xp_gained` is an event ("+3 XP happened", good for floating combat text); `xp_changed` is state ("you're at 2/8 toward level 3", which is what a bar needs). A listener can't derive the second from the first without duplicating Progression's math.
   - **Startup ordering is load-bearing.** HUD must sit *above* Player and Progression in main's child order, since Godot runs `_ready()` in tree order and both push their initial state there. Separately, `player.gd` calls its own handler by hand once after connecting — Hurtbox already emitted `health_changed` during its own `_ready()` (children run before parents), so connecting alone catches every future change but misses the starting value. General pattern: **when something joins late and needs current state, connect for updates AND read the value once.**
   - Debugging note for next time: symptoms were bars at 0% and labels blank — the `CanvasLayer` simply had no script attached. Worth checking before suspecting signal wiring.
+  - `_format_time()` uses `floori(total / 60.0)`. Godot warns on plain integer division (`total / 60`) because it's usually accidental — here the truncation is the entire point, and `floori()` states that intent out loud instead of leaving it as an implicit side effect of `%d` formatting.
+- **Run End UI:** `game/scripts/game_over_screen.gd`, a `CanvasLayer` child of main placed *below* HUD so it draws on top. IN — `EventBus.run_ended(reason)`, plus `TitleLabel` and `RestartButton` children. OUT — `GameState.reset_run()` then `get_tree().reload_current_scene()`. First UI that isn't read-only.
+  - **`process_mode = PROCESS_MODE_ALWAYS`** is mandatory. `end_run()` freezes the tree, and this screen only appears afterward — without opting out, the button renders but never responds, which reads as a broken button rather than a paused one. Children inherit the mode, so the Button is covered.
+  - **`reset_run()` must run BEFORE `reload_current_scene()`.** Autoloads survive scene reloads by design, so GameState would still be `ENDED` when the fresh scene loads; `main.gd` calls `start_run()`, its `if state != State.READY: return` guard fires, and the result is a scene that looks perfect and never starts, with nothing in the console. **This is the sharp edge of global state** — worth remembering anywhere an autoload holds run-scoped data. Everything else self-heals on reload because no other run-scoped state lives outside the scene.
+  - Branches on the reason string, defaulting to defeat in `else` rather than testing `"player_died"` explicitly — so a future reason (`"quit"`, `"out_of_bounds"`) shows a neutral-to-negative screen rather than falsely congratulating the player. Fail toward the less wrong option.
+- **Upgrade Selection:** _(TBD)_
 
 ## Reusability Standards
 Goal: build systems once, reuse across projects, stop rewriting things like 2D movement from scratch.
@@ -194,7 +202,9 @@ Small things consciously left undone, so they don't get rediscovered as surprise
 | ~~Movement doesn't stop on pause/run end~~ | — | **Fixed** by the engine-pause switch. |
 | ~~`_find_target()` re-queries the group every frame when no target exists~~ | — | **Fixed** incidentally — `_physics_process` no longer runs once the run ends. |
 | ~~Player death does nothing~~ | — | **Done** — that's the Run End system. |
-| No way to restart after death | — | The run ends and the tree freezes, but nothing can unfreeze it. Needs a game-over screen with `process_mode = PROCESS_MODE_ALWAYS` calling `reset_run()` + a scene reload. Part of UI/HUD. |
+| ~~No way to restart after death~~ | — | **Done** — `game_over_screen.gd`. |
+| `EventBus.level_up` still has no listeners | — | The last signal emitting into the void. Upgrade Selection is what consumes it. |
+| `damage_mult` on Stats is still unused | `stats.gd` | Never read by `take_damage()`. Upgrade Selection is the natural moment to either wire it up or delete it. |
 | No upgrade selection | — | Deliberately cut from Progression. Needs an `UpgradeData` Resource + a UI screen consuming `EventBus.level_up`. |
 | ~~No win condition~~ | — | **Done** — `run_timer.gd` calls `end_run("time_up")`. |
 | `get_time_left()` returns `run_duration` on both paths | `run_timer.gd` | Typo; second `return` should be `timer.time_left`. Silent until the HUD polls it. |
@@ -219,13 +229,15 @@ Enemies now chase (`Follow2D`), so the game has actual threat for the first time
 
 Everything consciously left undone lives in **Deferred Work & Known Issues** above, rather than in this section — that table survives between sessions, this paragraph gets rewritten each time.
 
-### Pick up here — game over + restart
-The HUD is done. A camera follows the player, spawns happen offscreen, and health/XP/level/timer all display live.
+### Pick up here — Upgrade Selection (system #13)
+**The loop is closed.** Start a run, play it, win or lose it, restart — all without touching the editor. Twelve systems, all gray-boxed, all contracted above.
 
-Remaining UI work, in order:
+`EventBus.level_up` is now the only signal still emitting into the void, and Upgrade Selection is what consumes it. It's the last *major* system, and the most different from everything so far:
 
-1. **Game-over screen** — consumes `EventBus.run_ended(reason)` and branches on the string: `"player_died"` → defeat, `"time_up"` → victory. Must set `process_mode = PROCESS_MODE_ALWAYS`, since `end_run()` freezes the tree before this screen ever appears. This is the first UI that isn't read-only.
-2. **Restart** — `reset_run()` plus `get_tree().reload_current_scene()`. Currently impossible: the tree freezes with nothing able to unfreeze it, so the only way out of a finished run is stopping the scene.
-3. **Upgrade selection** — the big one, and the only piece that isn't presentational at all. Consumes `EventBus.level_up`, needs an `UpgradeData` Resource type plus a pool to draw from, and must apply choices to the player's `Stats`. Deferred out of Progression deliberately. Treat as its own system, not a HUD feature — it pauses the game, presents a choice, and mutates player state.
+- It's the first system that **mutates another entity's state** rather than announcing something. Every system so far either owned its data or reported on it; this one reaches out and changes the player's `Stats`.
+- It's the first that **pauses the game deliberately** as part of normal play, rather than to end it. `GameState.pause_run()` exists and — like `end_run()` before Run End — has never been called.
+- It needs a genuinely new piece of architecture: an **`UpgradeData` Resource** type, and a pool of `.tres` files to draw choices from. This is the first real test of Reusability Standard #4 ("new content = new `.tres`, zero new code"), which has been asserted since day one but never actually exercised — every `.tres` so far has been a Stats block, not content.
 
-Note `player.gd` passes `"Player Died"` to `end_run()`, while `run_timer.gd` passes `"time_up"`. The game-over screen will compare these strings, so they should be consistent identifiers — `"player_died"` — before something starts branching on them.
+Design questions worth settling before scaffolding: how an upgrade expresses its effect (a stat name + amount? a script per upgrade?), whether upgrades can repeat or stack, and how many choices to present. The "stat name + amount" version is the one that keeps content in `.tres` files; anything script-based moves content back into code.
+
+**Also worth doing around here:** `Stats.damage_mult` has existed since system #2 and is still never read by `take_damage()`. An upgrade that increases damage is the obvious moment to either wire it up or delete the field.

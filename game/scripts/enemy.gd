@@ -24,6 +24,7 @@ extends Follow2D
 
 
 func _ready() -> void:
+	super()
 	hurtbox.died.connect(_on_hurtbox_died)
 
 

@@ -31,6 +31,23 @@ extends CharacterBody2D
 @export var speed: float = 200.0
 
 
+func _ready() -> void:
+	# Top-down games want FLOATING, not the CharacterBody2D default of
+	# GROUNDED. Grounded is the platformer mode: it treats Up Direction as
+	# meaningful, sorts collisions into floors/walls/ceilings, and applies
+	# *platform* behavior — a body resting on a "floor" inherits that
+	# floor's motion and rides along with it.
+	#
+	# In a top-down game where two bodies can touch from any side, that
+	# shows up as enemies sticking to the player on vertical contact and
+	# matching their speed, impossible to outrun. FLOATING treats every
+	# direction alike, so a collision is just a collision.
+	#
+	# Set here rather than in the Inspector so the addon is correct by
+	# default in any scene that uses it.
+	motion_mode = MOTION_MODE_FLOATING
+
+
 func _physics_process(_delta: float) -> void:
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	velocity = direction * speed

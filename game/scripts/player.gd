@@ -31,22 +31,9 @@ extends Movement2D
 
 
 func _ready() -> void:
+	super()
 	hurtbox.died.connect(_on_hurtbox_died)
-
-	# TODO: Relay this player's health onto the bus so the HUD can draw it.
-	#
-	# Approach:
-	#   1. hurtbox.stats.health_changed.connect(_on_health_changed)
-	#   2. Then immediately push the CURRENT value once, by hand:
-	#        _on_health_changed(hurtbox.stats.current_health, hurtbox.stats.max_health)
-	#
-	# Step 2 is the part that's easy to miss and annoying to debug. Child
-	# nodes run _ready() before their parent, so Hurtbox has ALREADY called
-	# stats.reset_to_full() — and its health_changed emission — before this
-	# line runs. Connecting now means you catch every FUTURE change but miss
-	# the starting value, and the HUD would sit blank until you first took
-	# damage. Firing the handler manually once fixes that.
-	#
+	
 	# General pattern worth remembering: when something joins late and needs
 	# current state, connect for updates AND read the value once.
 	hurtbox.stats.health_changed.connect(_on_health_changed)
@@ -90,4 +77,4 @@ func _on_hurtbox_died() -> void:
 	# spread is_running() into the movement addons, or switch everything to
 	# Godot's built-in get_tree().paused + process_mode instead. Decide it
 	# after seeing the behavior firsthand.
-	GameState.end_run("Player Died")
+	GameState.end_run("player_died")

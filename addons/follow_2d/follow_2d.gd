@@ -38,6 +38,17 @@ extends CharacterBody2D
 var target: Node2D
 
 
+func _ready() -> void:
+	# See the same note in movement_2d.gd. GROUNDED (the CharacterBody2D
+	# default) applies platformer floor/ceiling logic, which in a top-down
+	# game makes bodies stick together on vertical contact and inherit each
+	# other's motion. FLOATING treats all directions alike.
+	#
+	# Any script extending Follow2D that defines its own _ready() must call
+	# super() first, or this never runs. enemy.gd does exactly that.
+	motion_mode = MOTION_MODE_FLOATING
+
+
 func _physics_process(_delta: float) -> void:
 	# TODO: Steer toward the target each frame.
 	#
