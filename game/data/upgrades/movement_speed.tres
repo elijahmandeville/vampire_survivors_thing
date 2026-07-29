@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatUpgrade" format=3 uid="uid://bi2mtopvpvjoq"]
+
+[ext_resource type="Script" uid="uid://cqm4n8q07fi6d" path="res://game/scripts/upgrades/stat_upgrade.gd" id="1_2ue5n"]
+
+[resource]
+script = ExtResource("1_2ue5n")
+stat_name = "move_speed"
+amount = 25.0
+display_name = "Movement Speed"
+description = "Movement Speed +25"
+metadata/_custom_type_script = "uid://cqm4n8q07fi6d"

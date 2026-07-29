@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatUpgrade" format=3 uid="uid://f1050s6sm2dx"]
+
+[ext_resource type="Script" uid="uid://cqm4n8q07fi6d" path="res://game/scripts/upgrades/stat_upgrade.gd" id="1_thmkx"]
+
+[resource]
+script = ExtResource("1_thmkx")
+stat_name = "max_health"
+amount = 25.0
+display_name = "Max Health"
+description = "Max Health +25"
+metadata/_custom_type_script = "uid://cqm4n8q07fi6d"

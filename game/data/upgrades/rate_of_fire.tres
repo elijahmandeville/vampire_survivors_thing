@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="StatUpgrade" format=3 uid="uid://cdm0b0asp11cw"]
+
+[ext_resource type="Script" uid="uid://cqm4n8q07fi6d" path="res://game/scripts/upgrades/stat_upgrade.gd" id="1_oqu2d"]
+
+[resource]
+script = ExtResource("1_oqu2d")
+metadata/_custom_type_script = "uid://cqm4n8q07fi6d"

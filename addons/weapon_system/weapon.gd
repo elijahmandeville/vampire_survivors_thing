@@ -46,6 +46,19 @@ enum TargetMode { RANDOM, NEAREST_ENEMY }
 @export var target_mode: TargetMode = TargetMode.RANDOM
 @export var enemy_group: String = "enemies"  # group NEAREST_ENEMY searches
 
+## Scales the damage of every projectile this weapon fires. 1.0 = the
+## projectile scene's own damage, unchanged.
+##
+## A plain float, NOT a reference to a Stats resource — this addon still
+## knows nothing about the Stats system and drops into a project without
+## one. Whoever owns the weapon syncs this from outside (player.gd does),
+## the same "sync from outside" pattern movement_2d.gd documents for speed.
+##
+## Applied at spawn time rather than by the damage system, because each
+## projectile is a fresh instance — scaling its own `damage` is safe and
+## needed no changes at all to Hitbox or Hurtbox.
+@export var damage_mult: float = 1.0
+
 @onready var timer: Timer = $Timer
 
 
@@ -63,6 +76,7 @@ func _on_timer_timeout() -> void:
 	projectile.global_position = global_position
 	projectile.direction = _get_fire_direction()
 	projectile.source = get_parent()
+	projectile.damage *= damage_mult
 	get_tree().current_scene.add_child(projectile)
 
 

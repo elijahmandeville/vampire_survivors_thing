@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatUpgrade" format=3 uid="uid://df4bwpwcpp414"]
+
+[ext_resource type="Script" uid="uid://cqm4n8q07fi6d" path="res://game/scripts/upgrades/stat_upgrade.gd" id="1_77pcb"]
+
+[resource]
+script = ExtResource("1_77pcb")
+stat_name = "damage_mult"
+amount = 0.15
+display_name = "Damage Mult"
+description = "+15% Damage"
+metadata/_custom_type_script = "uid://cqm4n8q07fi6d"

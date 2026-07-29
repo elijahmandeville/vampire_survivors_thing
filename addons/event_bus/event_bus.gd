@@ -67,3 +67,16 @@ signal player_health_changed(current_health: float, max_health: float)
 ## is what a bar actually needs to draw itself). A listener can't derive the
 ## second from the first without duplicating Progression's own math.
 signal xp_changed(current_xp: int, xp_to_next: int, level: int)
+
+## Emitted by UpgradeScreen right after an upgrade's apply() runs.
+##
+## Exists because upgrades change Stats values SILENTLY. StatUpgrade calls
+## stats.set(), which is a plain property write — no signal, nothing
+## watching. Anything that mirrors a Stats value into its own field (see
+## player.gd's _sync_from_stats) would keep using the stale copy forever.
+##
+## Carries no arguments on purpose: listeners re-read whatever they care
+## about rather than being told what changed. Keeps this one signal
+## sufficient for every future upgrade category — a WeaponUpgrade or a
+## FollowerUpgrade needs no new plumbing here.
+signal upgrade_applied
