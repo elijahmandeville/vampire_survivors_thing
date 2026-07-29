@@ -9,14 +9,12 @@
 [ext_resource type="Script" uid="uid://bju5r3762j8l5" path="res://addons/upgrade_system/upgrade_data.gd" id="4_xvp1v"]
 [ext_resource type="Resource" uid="uid://df4bwpwcpp414" path="res://game/data/upgrades/damage.tres" id="5_fxpm5"]
 [ext_resource type="Script" uid="uid://c2i2n1apm7qru" path="res://game/scripts/xp_drop_spawner.gd" id="5_rafx1"]
-[ext_resource type="Resource" uid="uid://cdm0b0asp11cw" path="res://game/data/upgrades/rate_of_fire.tres" id="6_csc6c"]
 [ext_resource type="PackedScene" uid="uid://cfh7v4kgiyi2w" path="res://game/scenes/pickups/xp_gem.tscn" id="6_oh83o"]
 [ext_resource type="Script" uid="uid://d320742celn73" path="res://addons/progression/progression.gd" id="7_mgyau"]
 [ext_resource type="Resource" uid="uid://bi2mtopvpvjoq" path="res://game/data/upgrades/movement_speed.tres" id="7_rt8vy"]
 [ext_resource type="Resource" uid="uid://f1050s6sm2dx" path="res://game/data/upgrades/max_health.tres" id="8_csc6c"]
 [ext_resource type="Script" uid="uid://cveuub5rxtsxo" path="res://game/scripts/run_timer.gd" id="8_oh83o"]
 [ext_resource type="Script" uid="uid://d3dybghig3w15" path="res://game/scripts/hud.gd" id="9_hud01"]
-[ext_resource type="Resource" uid="uid://cwaoavat5g0h6" path="res://game/data/upgrades/projectile_speed.tres" id="9_rt8vy"]
 
 [node name="main" type="Node" unique_id=1552334455]
 script = ExtResource("1_6r5er")
@@ -51,7 +49,7 @@ offset_bottom = 45.0
 
 [node name="UpgradeScreen" type="CanvasLayer" parent="." unique_id=934761911 node_paths=PackedStringArray("target", "choice_buttons")]
 script = ExtResource("3_mehij")
-upgrade_pool = Array[ExtResource("4_xvp1v")]([ExtResource("5_fxpm5"), ExtResource("6_csc6c"), ExtResource("7_rt8vy"), ExtResource("8_csc6c"), ExtResource("9_rt8vy")])
+upgrade_pool = Array[ExtResource("4_xvp1v")]([ExtResource("5_fxpm5"), ExtResource("7_rt8vy"), ExtResource("8_csc6c")])
 target = NodePath("../Player")
 choice_buttons = [NodePath("Choice1"), NodePath("Choice2"), NodePath("Choice3")]
 
