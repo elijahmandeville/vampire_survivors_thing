@@ -46,6 +46,17 @@ func get_stats() -> Stats:
 	return hurtbox.stats
 
 
+## Public accessor for this player's Weapon, for the same reason as
+## get_stats(): callers shouldn't depend on where it sits in the scene.
+##
+## Returns null-safe garbage if the node is missing, so upgrades should
+## check. Will need rethinking once the player can hold MORE than one
+## weapon — at which point this probably becomes get_weapons() -> Array,
+## and a WeaponUpgrade decides whether it applies to one or all of them.
+func get_weapon() -> Weapon:
+	return weapon
+
+
 func _ready() -> void:
 	super()
 	hurtbox.died.connect(_on_hurtbox_died)

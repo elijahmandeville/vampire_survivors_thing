@@ -1,9 +1,11 @@
 [gd_scene format=3 uid="uid://73i3u4nr3tng"]
 
 [ext_resource type="Script" uid="uid://ctbvyt7pgef7e" path="res://addons/weapon_system/projectile.gd" id="1_3huqw"]
+[ext_resource type="Texture2D" uid="uid://dlmmvsxwaga7f" path="res://assets/sprites/projectile.png" id="2_dmhve"]
+[ext_resource type="Texture2D" uid="uid://bkpwdmam3dnj" path="res://assets/sprites/light_falloff.png" id="3_f4nqw"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_3huqw"]
-radius = 4.0
+radius = 5.0
 
 [node name="Projectile" type="Area2D" unique_id=2128537435]
 collision_layer = 2
@@ -11,5 +13,11 @@ collision_mask = 16
 script = ExtResource("1_3huqw")
 damage = 25.0
 
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1187547196]
+texture = ExtResource("2_dmhve")
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1034409227]
 shape = SubResource("CircleShape2D_3huqw")
+
+[node name="PointLight2D" type="PointLight2D" parent="." unique_id=369531810]
+texture = ExtResource("3_f4nqw")

@@ -2,21 +2,29 @@
 
 [ext_resource type="Script" uid="uid://yqi6nat7wd4w" path="res://game/scripts/player.gd" id="1_qnrw6"]
 [ext_resource type="Script" uid="uid://dpdcbfxsoifnh" path="res://addons/health_system/hurtbox.gd" id="2_7cuwy"]
+[ext_resource type="Texture2D" uid="uid://bmuual01ijh6f" path="res://assets/sprites/player.png" id="2_nrg7i"]
 [ext_resource type="Resource" uid="uid://clh86g0otvogt" path="res://game/data/stats/player_stats.tres" id="3_gapcj"]
 [ext_resource type="Script" uid="uid://dbx8fe4yievcb" path="res://addons/weapon_system/weapon.gd" id="4_qnrw6"]
 [ext_resource type="PackedScene" uid="uid://73i3u4nr3tng" path="res://game/scenes/weapons/projectile.tscn" id="5_nrg7i"]
+[ext_resource type="Texture2D" uid="uid://bkpwdmam3dnj" path="res://assets/sprites/light_falloff.png" id="7_8sgdq"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_a215n"]
+[sub_resource type="CircleShape2D" id="CircleShape2D_rbdfq"]
+radius = 17.0
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_m0jl5"]
+[sub_resource type="CircleShape2D" id="CircleShape2D_2hww4"]
+radius = 16.831684
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_a215n"]
+radius = 25.402843
 
 [node name="Player" type="CharacterBody2D" unique_id=1518569309 groups=["player"]]
 script = ExtResource("1_qnrw6")
 
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1028747745]
+texture = ExtResource("2_nrg7i")
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1761921970]
-shape = SubResource("RectangleShape2D_a215n")
+shape = SubResource("CircleShape2D_rbdfq")
 
 [node name="Hurtbox" type="Area2D" parent="." unique_id=1235021749]
 collision_layer = 4
@@ -27,7 +35,7 @@ metadata/_custom_type_script = "uid://dpdcbfxsoifnh"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=850689315]
 scale = Vector2(1.01, 1.01)
-shape = SubResource("RectangleShape2D_m0jl5")
+shape = SubResource("CircleShape2D_2hww4")
 
 [node name="Weapon" type="Node2D" parent="." unique_id=427789638]
 script = ExtResource("4_qnrw6")
@@ -47,3 +55,6 @@ shape = SubResource("CircleShape2D_a215n")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=21629644]
 position_smoothing_enabled = true
+
+[node name="PointLight2D" type="PointLight2D" parent="." unique_id=1020313924]
+texture = ExtResource("7_8sgdq")

@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://2fitruegy4rt" path="res://game/scripts/main.gd" id="1_6r5er"]
 [ext_resource type="PackedScene" uid="uid://dpr1r0l0kn1gb" path="res://game/scenes/player/player.tscn" id="1_iohjk"]
 [ext_resource type="PackedScene" uid="uid://bd34f88wanqqp" path="res://game/scenes/enemies/enemy.tscn" id="2_31wdb"]
+[ext_resource type="Texture2D" uid="uid://d0toex7nq1v4b" path="res://assets/sprites/ground_tile.png" id="2_csc6c"]
 [ext_resource type="Script" uid="uid://yk782ed7tr0c" path="res://addons/spawner/spawner.gd" id="2_nwrd2"]
 [ext_resource type="Script" uid="uid://jpl5qcomtk6s" path="res://addons/upgrade_system/upgrade_screen.gd" id="3_mehij"]
 [ext_resource type="Script" uid="uid://brx6i2e2tp4n3" path="res://game/scripts/game_over_screen.gd" id="3_rdrdo"]
@@ -13,11 +14,27 @@
 [ext_resource type="Script" uid="uid://d320742celn73" path="res://addons/progression/progression.gd" id="7_mgyau"]
 [ext_resource type="Resource" uid="uid://bi2mtopvpvjoq" path="res://game/data/upgrades/movement_speed.tres" id="7_rt8vy"]
 [ext_resource type="Resource" uid="uid://f1050s6sm2dx" path="res://game/data/upgrades/max_health.tres" id="8_csc6c"]
+[ext_resource type="Resource" uid="uid://rbjpwf46smdw" path="res://game/data/upgrades/rate_of_fire.tres" id="8_fxpm5"]
 [ext_resource type="Script" uid="uid://cveuub5rxtsxo" path="res://game/scripts/run_timer.gd" id="8_oh83o"]
 [ext_resource type="Script" uid="uid://d3dybghig3w15" path="res://game/scripts/hud.gd" id="9_hud01"]
 
+[sub_resource type="Environment" id="Environment_a215n"]
+background_mode = 3
+glow_enabled = true
+glow_blend_mode = 0
+glow_hdr_threshold = 0.82
+
 [node name="main" type="Node" unique_id=1552334455]
 script = ExtResource("1_6r5er")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=652757617]
+environment = SubResource("Environment_a215n")
+
+[node name="Ground" type="Sprite2D" parent="." unique_id=547376259]
+texture_repeat = 2
+texture = ExtResource("2_csc6c")
+region_enabled = true
+region_rect = Rect2(-5000, -5000, 10000, 10000)
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=272725195 node_paths=PackedStringArray("run_timer")]
 script = ExtResource("9_hud01")
@@ -49,7 +66,7 @@ offset_bottom = 45.0
 
 [node name="UpgradeScreen" type="CanvasLayer" parent="." unique_id=934761911 node_paths=PackedStringArray("target", "choice_buttons")]
 script = ExtResource("3_mehij")
-upgrade_pool = Array[ExtResource("4_xvp1v")]([ExtResource("5_fxpm5"), ExtResource("7_rt8vy"), ExtResource("8_csc6c")])
+upgrade_pool = Array[ExtResource("4_xvp1v")]([ExtResource("5_fxpm5"), ExtResource("7_rt8vy"), ExtResource("8_csc6c"), ExtResource("8_fxpm5")])
 target = NodePath("../Player")
 choice_buttons = [NodePath("Choice1"), NodePath("Choice2"), NodePath("Choice3")]
 
@@ -111,3 +128,7 @@ script = ExtResource("8_oh83o")
 run_duration = 600.0
 
 [node name="Timer" type="Timer" parent="Run Timer" unique_id=1069411225]
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=346910245]
+visible = false
+color = Color(0.3529412, 0.41568628, 0.39215687, 0.9372549)

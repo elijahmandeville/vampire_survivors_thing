@@ -2,12 +2,16 @@
 
 [ext_resource type="Script" uid="uid://dp4v1rav1gof7" path="res://game/scripts/xp_gem.gd" id="1_1k04h"]
 [ext_resource type="Script" uid="uid://c61ie6yblpwqb" path="res://addons/pickup_system/pickup.gd" id="2_2u78b"]
+[ext_resource type="Texture2D" uid="uid://dfjwcyhsrenfo" path="res://assets/sprites/xp_gem.png" id="2_6kjey"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_a215n"]
-radius = 7.0
+radius = 6.0
 
 [node name="XpGem" type="Node2D" unique_id=638512162]
 script = ExtResource("1_1k04h")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1645103752]
+texture = ExtResource("2_6kjey")
 
 [node name="Pickup" type="Area2D" parent="." unique_id=1142190251]
 collision_layer = 32

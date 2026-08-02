@@ -42,7 +42,32 @@ extends Node2D
 enum TargetMode { RANDOM, NEAREST_ENEMY }
 
 @export var projectile_scene: PackedScene
-@export var fire_interval: float = 1.0
+
+## Seconds between shots. Lower = faster.
+##
+## This uses a SETTER rather than being a plain variable, because the Timer
+## copies this value into its own wait_time — so writing `fire_interval`
+## alone would change the number and not the behavior. That's the "value
+## with a writer and no reader" bug in miniature, and it would have been
+## invisible: the upgrade applies, the field updates, the gun fires at
+## exactly the same rate.
+##
+## A setter runs every time the property is assigned, from anywhere, so the
+## two values can't drift apart. Nobody has to remember.
+##
+## `if timer:` guards startup — @onready vars are null until _ready() runs,
+## and an @export can be assigned by the scene loader before that.
+@export var fire_interval: float = 1.0:
+	set(value):
+		fire_interval = maxf(value, min_fire_interval)
+		if timer:
+			timer.wait_time = fire_interval
+
+## Hard floor on fire_interval. Without it, enough fire-rate upgrades drive
+## the interval toward zero — and a Timer with wait_time 0 either errors or
+## tries to fire every frame. Clamping in the setter means no caller can
+## get it wrong.
+@export var min_fire_interval: float = 0.05
 @export var target_mode: TargetMode = TargetMode.RANDOM
 @export var enemy_group: String = "enemies"  # group NEAREST_ENEMY searches
 

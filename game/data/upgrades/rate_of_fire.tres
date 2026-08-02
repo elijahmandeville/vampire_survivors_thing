@@ -1,7 +1,9 @@
-[gd_resource type="Resource" script_class="StatUpgrade" format=3 uid="uid://cdm0b0asp11cw"]
+[gd_resource type="Resource" script_class="WeaponUpgrade" format=3 uid="uid://rbjpwf46smdw"]
 
-[ext_resource type="Script" uid="uid://cqm4n8q07fi6d" path="res://game/scripts/upgrades/stat_upgrade.gd" id="1_oqu2d"]
+[ext_resource type="Script" uid="uid://5xdymo87ldx1" path="res://game/scripts/upgrades/weapon_upgrade.gd" id="1_iu1mm"]
 
 [resource]
-script = ExtResource("1_oqu2d")
-metadata/_custom_type_script = "uid://cqm4n8q07fi6d"
+script = ExtResource("1_iu1mm")
+display_name = "Rate of Fire Increase"
+description = "Increase RoF by 15%"
+metadata/_custom_type_script = "uid://5xdymo87ldx1"

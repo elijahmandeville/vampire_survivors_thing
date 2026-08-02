@@ -31,7 +31,7 @@ Build and validate independent, swappable systems using placeholder art ("gray b
 | 10 | Win Condition | Survive the run timer | **Done** |
 | 11 | UI/HUD | Health bar, XP bar, timer, level | **Done** |
 | 12 | Run End UI | Game over screen + restart | **Done** |
-| 13 | Upgrade Selection | UpgradeData resources, level-up choice screen | Not started |
+| 13 | Upgrade Selection | UpgradeData resources, level-up choice screen | **Done** |
 | 14 | Art/Juice | Real art, animation, screen shake, VFX — last | Not started |
 
 *Rule of thumb: a system isn't modular yet if it needs final art or another unfinished system to be testable in isolation.*
@@ -106,7 +106,23 @@ Once a system is gray-boxed and working, write a short contract for it here: wha
   - **`process_mode = PROCESS_MODE_ALWAYS`** is mandatory. `end_run()` freezes the tree, and this screen only appears afterward — without opting out, the button renders but never responds, which reads as a broken button rather than a paused one. Children inherit the mode, so the Button is covered.
   - **`reset_run()` must run BEFORE `reload_current_scene()`.** Autoloads survive scene reloads by design, so GameState would still be `ENDED` when the fresh scene loads; `main.gd` calls `start_run()`, its `if state != State.READY: return` guard fires, and the result is a scene that looks perfect and never starts, with nothing in the console. **This is the sharp edge of global state** — worth remembering anywhere an autoload holds run-scoped data. Everything else self-heals on reload because no other run-scoped state lives outside the scene.
   - Branches on the reason string, defaulting to defeat in `else` rather than testing `"player_died"` explicitly — so a future reason (`"quit"`, `"out_of_bounds"`) shows a neutral-to-negative screen rather than falsely congratulating the player. Fail toward the less wrong option.
-- **Upgrade Selection:** _(TBD)_
+- **Upgrade Selection:** The architecture question here was real — reusability (content as `.tres`, zero code) vs. open-endedness (upgrades that grant weapons, followers, status effects, not just numbers). **Resolved by paying per CATEGORY instead of per ITEM.**
+  - `UpgradeData` (`class_name UpgradeData`, `extends Resource`, `addons/upgrade_system/`) — base class, never instanced directly. Holds `display_name`, `description`, `icon`, `weight`, and a virtual `apply(target: Node)` that does nothing. Each *kind* of effect is a subclass written once; each *instance* is a `.tres` with no code.
+  - `UpgradeScreen` (`addons/upgrade_system/upgrade_screen.gd`, a `CanvasLayer`) — IN: `EventBus.level_up`, `@export upgrade_pool` / `target` / `choice_buttons`. OUT: `GameState.pause_run()`/`resume_run()`, `upgrade.apply(target)`, `EventBus.upgrade_applied`. **Never learns what an upgrade does** — it only calls `apply()`.
+  - `StatUpgrade` (`game/scripts/upgrades/`) — category 1. `stat_name` + `amount`, applied via `stats.set(name, stats.get(name) + amount)`. Additive.
+  - `WeaponUpgrade` (`game/scripts/upgrades/`) — category 2. `fire_interval_mult`, applied to the player's Weapon. **Adding it required zero changes to `UpgradeScreen`, `UpgradeData`, or `StatUpgrade`** — the design's first real test, and it passed.
+  - **Subclasses live in `game/`, not `addons/`.** What an upgrade *does* is content and content is game-specific; only the machinery is reusable. This is also why `WeaponUpgrade` can reach the Weapon node directly without dragging weapon numbers into `Stats` and coupling two addons.
+  - **First thing to call `GameState.pause_run()`** — it had existed unused since system #1, exactly like `end_run()` before Run End. Needs `PROCESS_MODE_ALWAYS` for the same reason as the game-over screen.
+  - `pending_levels` counter handles one XP drop crossing two thresholds: if the screen is already open, bank the level and re-present after the current pick resolves. Same reasoning as the `while` loop in `progression.gd`.
+  - `bind(i)` on each button's `pressed` signal — pre-loads an argument at connect time so three identical buttons can share one handler and still be distinguishable.
+- **Making upgrades actually DO something (the non-obvious half):**
+  - **A value with a writer and no reader looks exactly like a working feature.** Both `move_speed` and `damage_mult` were inert when first upgraded: the `.tres` applied cleanly, the number changed, the game played identically. No error, no warning. `max_health` worked only because the HUD happened to read it.
+  - **Checklist for any new stat upgrade:** (1) what number changes, (2) *what reads it* — if nothing does, the upgrade is a no-op, (3) is it read live or cached once at `_ready()`, (4) should it live on `Stats` (player-wide) or on the component (component-specific)?
+  - **The fix is a push, not a pull.** `player.gd._sync_from_stats()` copies `stats.move_speed` → `Movement2D.speed` and `stats.damage_mult` → `Weapon.damage_mult`, called on `_ready()` and on `EventBus.upgrade_applied`. Addons expose plain numbers; game glue copies between them. `movement_2d.gd` had documented exactly this since system #3 and nothing had done it until now.
+  - **`EventBus.upgrade_applied` exists because `stats.set()` is silent** — a plain property write with no signal. Carries no arguments on purpose, so listeners re-read whatever they care about and future upgrade categories need no new plumbing.
+  - **Damage went through the Weapon, not the damage system.** `Weapon.damage_mult` scales each projectile's own `damage` at spawn. Since every projectile is a fresh instance this is safe, and **Hitbox/Hurtbox needed no changes at all** — versus threading the attacker's Stats through to the defender's Hurtbox, which would have touched the whole pipeline.
+  - **`Weapon.fire_interval` uses a property setter**, updating both the field and the running Timer's `wait_time` (and clamping to `min_fire_interval`). The Timer copies `wait_time` once, so writing the field alone would have been another silent no-op. A setter makes the two impossible to desync — nobody has to remember.
+  - **Additive vs multiplicative:** additive for quantities (health, damage, speed), multiplicative for intervals and rates. Subtracting a flat amount from `fire_interval` would reach zero and go negative, and each pick would be worth progressively more (1.0→0.85 is +18% rate; 0.30→0.15 doubles it). Multiplying approaches zero without reaching it and keeps every pick worth the same.
 
 ## Reusability Standards
 Goal: build systems once, reuse across projects, stop rewriting things like 2D movement from scratch.
@@ -182,8 +198,39 @@ vampire_survivor_thing/
 ## Open Decisions
 - [x] System communication pattern — resolved, see `docs/ADR-001-system-communication.md`
 - [x] **How systems should respect pause/run state — RESOLVED: use Godot's built-in pause.** `GameState` now drives `get_tree().paused` on every state change; the engine stops `_process`, `_physics_process`, timers, and input on every node whose `process_mode` inherits the default. Spawner and Weapon had their `is_running()` guards **deleted** — they no longer reference `GameState` at all and are genuinely droppable into a project that has no such autoload (Reusability Standard #1 restored). `Movement2D` and `Follow2D` needed no changes; they simply stop being called. Rejected alternatives: spreading `is_running()` into the movement addons (would have deepened the coupling in two more files), and an `@export var require_running` flag (opt-in per instance, but still leaves every system re-implementing pause). Tradeoff accepted: pause is all-or-nothing per node, so anything that must survive a pause opts out with `process_mode = PROCESS_MODE_ALWAYS` — `GameState` itself does this, or it would freeze itself and nothing could ever call `resume_run()`. A pause menu and game-over screen will need the same.
-- [ ] Working title / theme (repo is currently named `vampire_survivor_thing`, placeholder)
-- [ ] Art style direction (for later, post-gray-box)
+- [x] **Art style direction — DECIDED, see "Art Direction & Theme" below.**
+- [ ] Working title / theme (repo is currently named `vampire_survivor_thing`, placeholder — the netrunner framing should suggest something better)
+
+## Art Direction & Theme
+**Japanese cyberpunk / dystopian netrunner.** Decided from a reference set of five pieces (dense neon street with a ronin figure, vertical signage-choked alleys, a grimy jack-in room, a rainy industrial street).
+
+### The framing device
+**The player is a netrunner in a chair. Every level is a simulation he jacks into.** The main menu is that room — dentist chair, IV drips, CRTs, cables into the skull, a corporate logo on a screen showing something you'd rather not see.
+
+This is **load-bearing, not flavor**, for three reasons:
+
+1. **It justifies the sparse arena.** A survivors-like needs a hundred entities to read instantly at a glance. The reference art is dense, low-contrast environment art — beautiful, and actively hostile to that. Rendering an alley as the arena floor would make the game unplayable noise. But "you are inside a machine" makes a grid floor, void, and abstract geometry *correct* rather than unfinished.
+2. **It makes gray-box shapes diegetic.** Enemies as daemons/ICE — wireframes, glitching polygons — is a legitimate final look, not a placeholder. The current gray-box is closer to shippable than it looks.
+3. **It splits the game into two visual registers, each cheap in a different way.** The chair room is *one* detailed static painting made once. The simulation is geometry and glow, generated and cheap at scale. Grubby analog reality vs. clean abstract digital — the contrast is itself an asset.
+
+Theming that falls out of it: weapons are programs you load, upgrades are daemons you install, unlocks are software. Maps onto the existing `UpgradeData` category system directly.
+
+### Palette
+Four of the five references share a palette, and it is NOT saturated Blade Runner neon — it's **desaturated teal-green with warm signal accents**. Deliberately chosen over the hot-magenta register: a screen filling with enemies over hot neon becomes unreadable, whereas a dim green-grey world leaves the entities room to own the saturated colors.
+
+| Role | Hex | Used for |
+|---|---|---|
+| World base | `#0E1A16` | Ground, void |
+| World mid | `#2A3B33` | Grid lines, structure |
+| Warm signal | `#E8B33A` | Projectiles, player-side effects |
+| Alert | `#D2422F` | Enemies |
+| Cool signal | `#4FD8C8` | Player accent, XP, UI |
+| Magenta | `#E23A8C` | Sparingly — rare/dangerous only |
+| Player core | `#E0F0EC` | Near-white; always the brightest thing on screen |
+
+**Legibility rule that outlasts the placeholders:** the player is the lightest, highest-contrast object on screen at all times. Enemies read as a warm mass, not as individuals. Pickups are cool-toned so they never register as a threat at a glance. Value and temperature do the work — not detail — which is why it survives any change in style.
+
+Current placeholders in `assets/sprites/` are already in this palette with a soft glow baked in. Next step for feel: a `WorldEnvironment` with Glow enabled, so bright pixels bloom for real instead of relying on baked halos.
 
 ## Display & Fairness
 **Display → Stretch → Aspect is `keep`** (was `expand`). Every player sees exactly the same amount of world regardless of window size or monitor; wider aspect ratios get pillarboxed instead of revealing more map. Matches what Vampire Survivors does.
@@ -203,8 +250,11 @@ Small things consciously left undone, so they don't get rediscovered as surprise
 | ~~`_find_target()` re-queries the group every frame when no target exists~~ | — | **Fixed** incidentally — `_physics_process` no longer runs once the run ends. |
 | ~~Player death does nothing~~ | — | **Done** — that's the Run End system. |
 | ~~No way to restart after death~~ | — | **Done** — `game_over_screen.gd`. |
-| `EventBus.level_up` still has no listeners | — | The last signal emitting into the void. Upgrade Selection is what consumes it. |
-| `damage_mult` on Stats is still unused | `stats.gd` | Never read by `take_damage()`. Upgrade Selection is the natural moment to either wire it up or delete it. |
+| ~~`EventBus.level_up` has no listeners~~ | — | **Done** — `UpgradeScreen` consumes it. |
+| ~~`damage_mult` unused~~ | — | **Done** — read by `player.gd._sync_from_stats()` into `Weapon.damage_mult`. Still never read by `Stats.take_damage()`, which is fine: it's an *outgoing* multiplier, applied at the attacker's end. |
+| Upgrades must be added to `upgrade_pool` by hand | `main.tscn` | Fine at 4 upgrades; tedious at 30. Replaceable with a script that scans `game/data/upgrades/` at startup, making "drop in a `.tres`" genuinely the whole process. |
+| Damage upgrades feel like nothing until a breakpoint | — | Enemies have 100 HP, projectiles do 50 — two hits. +15% does nothing visible until enough stacks cross to one-shot. Usual genre fix is higher enemy HP so damage scales smoothly rather than in jumps. |
+| No multi-weapon support | `player.gd` | `get_weapon()` returns one Weapon. Becomes `get_weapons() -> Array` when the player can hold several, at which point `WeaponUpgrade` decides whether it applies to one or all. |
 | No upgrade selection | — | Deliberately cut from Progression. Needs an `UpgradeData` Resource + a UI screen consuming `EventBus.level_up`. |
 | ~~No win condition~~ | — | **Done** — `run_timer.gd` calls `end_run("time_up")`. |
 | `get_time_left()` returns `run_duration` on both paths | `run_timer.gd` | Typo; second `return` should be `timer.time_left`. Silent until the HUD polls it. |
@@ -229,7 +279,18 @@ Enemies now chase (`Follow2D`), so the game has actual threat for the first time
 
 Everything consciously left undone lives in **Deferred Work & Known Issues** above, rather than in this section — that table survives between sessions, this paragraph gets rewritten each time.
 
-### Pick up here — Upgrade Selection (system #13)
+### Pick up here — content and feel
+**Every system in the plan is built.** Move, spawn, chase, shoot, kill, drop XP, collect, level, choose an upgrade, win or lose, restart. Thirteen systems, all gray-boxed, all contracted above. There is no longer a "next system" in the original dependency order — what's left is content, feel, and the deferred items in the table above.
+
+Reasonable next directions, roughly in order of how much they'd change the game:
+
+1. **Multi-shot** (`projectile_count` + spread on `weapon.gd`), then a `WeaponUpgrade` for it. Not an upgrade problem — the weapon fires exactly one projectile per timeout, so there's no number to raise yet. This is the biggest change to how combat feels.
+2. **A second weapon type.** The `TargetMode` enum and `projectile_scene` export were built for this and have never been exercised with more than one weapon. Likely surfaces whatever's wrong with the "one Weapon per player" assumption.
+3. **Difficulty scaling.** `Spawner.interval_decrease_rate` exists and defaults to 0, so the game never gets harder. One number away from a difficulty curve.
+4. **Balance pass.** Enemy HP, projectile damage, XP curve, upgrade increments — all guesses, none play-tested against each other. Worth doing after multi-shot, since that shifts everything.
+5. **Art direction** — the gray-box rule says this comes last, and it's now genuinely unblocked. Elijah has noted art direction will drive what weapons and upgrades should be, so ideation here feeds back into 1 and 2.
+
+### Superseded — Upgrade Selection (system #13, now done)
 **The loop is closed.** Start a run, play it, win or lose it, restart — all without touching the editor. Twelve systems, all gray-boxed, all contracted above.
 
 `EventBus.level_up` is now the only signal still emitting into the void, and Upgrade Selection is what consumes it. It's the last *major* system, and the most different from everything so far:
