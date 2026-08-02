@@ -26,7 +26,7 @@ extends Node
 ## Each level costs this much more than the last (1.5 = each level needs
 ## 50% more XP). Float on purpose so the curve can be tuned finely; the
 ## result gets rounded back to an int in _recalculate_xp_to_next().
-@export var xp_curve_multiplier: float = 1.5
+@export var xp_curve_multiplier: float = 1.3
 
 var current_xp: int = 0
 var level: int = 1

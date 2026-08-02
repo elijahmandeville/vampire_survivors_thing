@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="SpawnEntry" format=3 uid="uid://cgyk6nkxorxbr"]
+
+[ext_resource type="Script" uid="uid://jgo5fs3y7ygd" path="res://addons/spawner/spawn_entry.gd" id="1_h855c"]
+[ext_resource type="PackedScene" uid="uid://bd34f88wanqqp" path="res://game/scenes/enemies/enemy.tscn" id="1_s1ei2"]
+
+[resource]
+script = ExtResource("1_h855c")
+enemy_scene = ExtResource("1_s1ei2")
+start_time = 60.0
+metadata/_custom_type_script = "uid://jgo5fs3y7ygd"

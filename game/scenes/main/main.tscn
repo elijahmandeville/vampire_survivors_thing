@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://2fitruegy4rt" path="res://game/scripts/main.gd" id="1_6r5er"]
 [ext_resource type="PackedScene" uid="uid://dpr1r0l0kn1gb" path="res://game/scenes/player/player.tscn" id="1_iohjk"]
-[ext_resource type="PackedScene" uid="uid://bd34f88wanqqp" path="res://game/scenes/enemies/enemy.tscn" id="2_31wdb"]
 [ext_resource type="Texture2D" uid="uid://d0toex7nq1v4b" path="res://assets/sprites/ground_tile.png" id="2_csc6c"]
 [ext_resource type="Script" uid="uid://yk782ed7tr0c" path="res://addons/spawner/spawner.gd" id="2_nwrd2"]
 [ext_resource type="Script" uid="uid://jpl5qcomtk6s" path="res://addons/upgrade_system/upgrade_screen.gd" id="3_mehij"]
@@ -17,12 +16,20 @@
 [ext_resource type="Resource" uid="uid://rbjpwf46smdw" path="res://game/data/upgrades/rate_of_fire.tres" id="8_fxpm5"]
 [ext_resource type="Script" uid="uid://cveuub5rxtsxo" path="res://game/scripts/run_timer.gd" id="8_oh83o"]
 [ext_resource type="Script" uid="uid://d3dybghig3w15" path="res://game/scripts/hud.gd" id="9_hud01"]
+[ext_resource type="Script" uid="uid://jgo5fs3y7ygd" path="res://addons/spawner/spawn_entry.gd" id="13_8aiix"]
+[ext_resource type="Resource" uid="uid://b1ke5cm3tbebw" path="res://game/data/spawns/drone.tres" id="14_ic0m1"]
+[ext_resource type="Resource" uid="uid://cgyk6nkxorxbr" path="res://game/data/spawns/heavy.tres" id="15_kuhsx"]
 
 [sub_resource type="Environment" id="Environment_a215n"]
 background_mode = 3
 glow_enabled = true
 glow_blend_mode = 0
 glow_hdr_threshold = 0.82
+
+[sub_resource type="Curve" id="Curve_s5p3y"]
+_limits = [0.0, 10.0, 0.0, 1.0]
+_data = [Vector2(0, 0.5), 0.0, 0.0, 0, 0, Vector2(1, 2.5), 0.0, 0.0, 0, 0]
+point_count = 2
 
 [node name="main" type="Node" unique_id=1552334455]
 script = ExtResource("1_6r5er")
@@ -110,7 +117,9 @@ position = Vector2(516, 277)
 [node name="Spawner" type="Node2D" parent="." unique_id=669983639 node_paths=PackedStringArray("target")]
 script = ExtResource("2_nwrd2")
 target = NodePath("../Player")
-enemy_scene = ExtResource("2_31wdb")
+spawn_table = Array[ExtResource("13_8aiix")]([ExtResource("14_ic0m1"), ExtResource("15_kuhsx")])
+spawn_rate_curve = SubResource("Curve_s5p3y")
+difficulty_ramp_time = 600.0
 spawn_radius = 800.0
 min_spawn_distance = 600.0
 
